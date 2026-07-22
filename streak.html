@@ -33067,6 +33067,13 @@
     { key: "silver", name: "SILVER TABLE", ante: 8, pots: [16, 32, 64], mult: 1, sub: "cruel scale \xB7 pot doubles 16\u219232\u219264" },
     { key: "gold", name: "GOLD TABLE", ante: 12, pots: [24, 48, 96], mult: 1.3, sub: "savage scale \xB7 pot doubles 24\u219248\u219296" }
   ];
+  var JESTER_DARES = [
+    "You walked my whole lantern road just to freeze at the door? Come in, iron-hauler \u2014 let's see if your nerve is worth half your back.",
+    "The lanterns don't light for just anyone, friend \u2014 tonight, they lit for you. Don't be rude. Step inside.",
+    "Three cards, one night, your luck against mine. You've hauled the iron... now lift the flap and see what it bought you.",
+    "Ah \u2014 the strong one. Muscle's cheap; anyone can push. Nerve is the rare coin. Come in and spend some.",
+    "Midnight takes my tent and everything in it. Step in now, or spend all year wondering what you'd have won."
+  ];
   var SKIMLINES = [
     "THE HOUSE DRINKS FIRST.",
     "A SLIVER FOR THE CANDLES.",
@@ -33114,6 +33121,7 @@
     const [left, setLeft] = (0, import_react41.useState)(0);
     const [urgent, setUrgent] = (0, import_react41.useState)(false);
     const [pk, setPk] = (0, import_react41.useState)("PICK A CARD, ANY CARD");
+    const [dare] = (0, import_react41.useState)(() => JESTER_DARES[Math.floor(Math.random() * JESTER_DARES.length)]);
     const [verdict, setVerdict] = (0, import_react41.useState)(null);
     const [shakeCls, setShakeCls] = (0, import_react41.useState)("");
     const [tickK, setTickK] = (0, import_react41.useState)(0);
@@ -33366,17 +33374,20 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "jj-scrim" }),
       urgent && live && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "jj-urgveil" }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-fx", ref: fxRef }),
-      phase === "road" && !verdict && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "jj-scene", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "jj-roadw", children: [
-          beat >= 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-w jj-bone", children: "THE SESSION IS DONE." }),
-          beat >= 2 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-w jj-mut", children: "ON THE ROAD HOME \u2014 LANTERNS." })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `jj-tent ${beat >= 3 ? "on" : ""} ${beat === 10 ? "jj-entering" : ""}`, onClick: enterTent, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "jj-tentart", style: artBG("card-jester.jpg", "center 40%") }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-tentcap", children: "TAP THE TENT \xB7 STEP INSIDE" })
-        ] }),
-        beat >= 3 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-r3", children: "A TENT THAT WASN\u2019T THERE YESTERDAY" }),
-        beat >= 4 && beat < 10 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-foot", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "jj-plq jj-dim", onClick: onClose, children: "WALK PAST" }) })
+      phase === "road" && !verdict && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "jj-scene jj-cine", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "jj-cine-scene", style: artBG("road-jester.jpg", "center") }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `jj-cine-card ${beat === 10 ? "jj-entering" : ""}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "jj-cine-inner", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "jj-cine-cardart", style: artBG("card-jester.jpg", "center 40%") }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "jj-cine-cardscrim" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-cine-quote", children: ("\u201C" + dare + "\u201D").split(" ").map((w, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_react41.default.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "jj-qw", style: { animationDelay: `${(5.2 + i * 0.075).toFixed(3)}s` }, children: w }),
+            " "
+          ] }, i)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "jj-cine-foot", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "jj-cine-enter", onClick: enterTent, children: "ENTER THE TENT" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "jj-cine-not", onClick: onClose, children: "not today" })
+          ] })
+        ] }) })
       ] }),
       phase === "greet" && !verdict && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "jj-scene", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "jj-name", children: "THE JESTER" }),
@@ -34586,7 +34597,7 @@
         return next;
       });
       setRestEnd(null);
-      if (summary) setDoneCard(summary);
+      if (summary && !tentPitch) setDoneCard(summary);
       if (ambushDebt) setCollectorEnc(ambushDebt);
       else if (tentPitch) setJesterEnc({ mode: "road" });
     };
@@ -39553,7 +39564,40 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .sg-jenter{border-color:rgba(199,125,255,.8) !important; color:#C77DFF !important;
   text-shadow:0 0 14px rgba(199,125,255,.5) !important;}
 .jj{position:fixed; inset:0; z-index:60; background:#0a0612; overflow:hidden;
-  font-family:'Archivo',sans-serif; text-align:center;}
+  font-family:'Archivo',sans-serif; text-align:center; animation:jjWake .45s ease both;}
+@keyframes jjWake{from{opacity:0;}to{opacity:1;}}
+/* ---- cinematic jester intro (the road) ---- */
+.jj-cine{z-index:2;}
+.jj-cine-scene{position:absolute; inset:0; z-index:1; background-size:cover; background-position:center;
+  opacity:0; animation:jjSceneOpen 2.7s cubic-bezier(.2,.7,.25,1) .55s both;}
+.jj-cine-scene::after{content:""; position:absolute; inset:0; background:radial-gradient(120% 85% at 50% 45%, transparent 55%, rgba(6,4,12,.6) 100%);}
+@keyframes jjSceneOpen{0%{opacity:0; transform:scale(1.14);}100%{opacity:1; transform:scale(1);}}
+.jj-cine-card{position:absolute; inset:0; z-index:3; display:flex; align-items:center; justify-content:center;
+  padding:22px; opacity:0; background:rgba(6,4,12,0); animation:jjCardIn 1.5s cubic-bezier(.2,.8,.25,1) 5s both;}
+@keyframes jjCardIn{0%{opacity:0; transform:scale(1.05) translateY(18px); background:rgba(6,4,12,0);}
+  100%{opacity:1; transform:scale(1) translateY(0); background:rgba(6,4,12,.5);}}
+.jj-cine-card.jj-entering{opacity:0; transform:scale(1.1); transition:opacity .7s ease, transform .7s ease; animation:none;}
+.jj-cine-inner{position:relative; width:100%; max-width:360px; border-radius:20px; overflow:hidden;
+  border:1px solid rgba(185,140,255,.5); box-shadow:0 0 60px rgba(138,92,255,.4); aspect-ratio:3/4.4;}
+.jj-cine-cardart{position:absolute; inset:0; background-size:cover;}
+.jj-cine-cardscrim{position:absolute; inset:0; background:linear-gradient(180deg,rgba(8,5,16,.82) 0%,rgba(8,5,16,.28) 26%,rgba(8,5,16,.12) 52%,rgba(8,5,16,.92) 100%);}
+.jj-cine-quote{position:absolute; top:0; left:0; right:0; padding:30px 24px 0; text-align:center;
+  font-family:'Cinzel',serif; font-style:italic; font-weight:600; font-size:16px; line-height:1.62;
+  color:#efe7ff; letter-spacing:.015em; text-shadow:0 2px 22px #000; animation:jjHaunt 6s ease-in-out 6.8s infinite;}
+@keyframes jjHaunt{0%,100%{text-shadow:0 2px 22px #000,0 0 3px rgba(184,140,255,.12);}
+  42%{opacity:.965;} 50%{text-shadow:0 2px 22px #000,0 0 17px rgba(184,140,255,.5);} 74%{opacity:.94;}}
+.jj-qw{display:inline-block; opacity:0; animation:jjQmat .85s cubic-bezier(.22,.61,.36,1) both;}
+@keyframes jjQmat{from{opacity:0; transform:translateY(7px);}to{opacity:1; transform:translateY(0);}}
+.jj-cine-foot{position:absolute; left:0; right:0; bottom:0; padding:0 18px 20px; display:flex;
+  flex-direction:column; align-items:center; gap:6px; opacity:0; animation:jjFootIn .8s ease 6.9s both;}
+@keyframes jjFootIn{from{opacity:0;}to{opacity:1;}}
+.jj-cine-enter{width:100%; border:none; border-radius:12px; padding:16px 20px; font-family:'Anton';
+  letter-spacing:.06em; font-size:15px; color:#1a1206; background:linear-gradient(180deg,#d9b6ff,#a874ff);
+  box-shadow:0 8px 24px rgba(138,92,255,.4); cursor:pointer;}
+.jj-cine-enter:active{transform:scale(.98);}
+.jj-cine-not{background:none; border:none; color:#9a8fb5; font-family:'Archivo'; font-weight:700;
+  font-size:12px; letter-spacing:.08em; text-transform:uppercase; padding:10px; cursor:pointer;}
+.jj-cine-not:active{color:#efe7ff;}
 .jj-bg{position:absolute; inset:0; z-index:0; background-size:cover; background-position:center top;
   background-color:#0a0612; will-change:opacity; transform:translateZ(0);}
 .jj-bg.jj-pop{animation:jjPop 2.6s ease both;}
