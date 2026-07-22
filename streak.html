@@ -31414,7 +31414,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.19-jester.9";
+  var APP_VERSION = "v2026.07.22-prog.1";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_SETS = 10;
@@ -31534,6 +31534,99 @@
   var fromUnit = (v, unit2) => unit2 === "lb" ? v / KGLB : v;
   var uLbl = (unit2) => unit2 === "lb" ? "lb" : "kg";
   var wShow = (kg, unit2) => kgTrim(toUnit(kg, unit2));
+  var progRound1 = (n) => Math.round(n * 10) / 10;
+  var progSnap = (kg, step) => Math.max(step, Math.round(kg / step) * step);
+  function defaultInc(name, kg) {
+    const n = (name || "").toLowerCase();
+    if (/cable|lateral|fly|triceps|curl|raise|rear delt|face pull/.test(n)) return 2.5;
+    if (/dumbbell|\bdb\b/.test(n)) return 2;
+    if (/deadlift|squat|leg press|hip thrust/.test(n) && kg >= 80) return 5;
+    if (kg >= 70) return 5;
+    return 2.5;
+  }
+  function evalSession(session, target) {
+    const done = (session.sets || []).filter(
+      (s2) => s2.done && s2.kg > 0 && s2.reps > 0 && s2.reps <= 100 && s2.rest == null
+    );
+    if (!done.length) return null;
+    const w = Math.max(...done.map((s2) => s2.kg));
+    const repsAtW = done.filter((s2) => Math.abs(s2.kg - w) < 1e-6).map((s2) => s2.reps).sort((a2, b) => b - a2);
+    const count = repsAtW.length;
+    const work = repsAtW.slice(0, target.sets);
+    const minReps = work.length ? Math.min(...work) : 0;
+    return { w, count, minReps };
+  }
+  function progressionFor(ex, history) {
+    const target = {
+      sets: ex.sets || 3,
+      low: ex.repLow ?? ex.reps ?? 8,
+      high: ex.repHigh ?? ex.reps ?? 8
+    };
+    const inc = ex.inc || defaultInc(ex.name, ex.kg || 0);
+    const hist = (history || []).filter(Boolean);
+    if (!hist.length) return { state: "new", kg: ex.kg, inc, target, msg: "Log a session to start tracking." };
+    const last2 = evalSession(hist[0], target);
+    if (!last2) return { state: "new", kg: ex.kg, inc, target, msg: "Log a full set to start tracking." };
+    if (last2.count < target.sets)
+      return { state: "hold", kg: last2.w, inc, target, msg: `Finish all ${target.sets} sets to gauge progress.` };
+    if (last2.minReps >= target.high) {
+      const nextKg = progSnap(last2.w + inc, inc);
+      return {
+        state: "advance",
+        kg: nextKg,
+        inc,
+        from: last2.w,
+        target,
+        msg: `Add ${progRound1(nextKg - last2.w)} \u2014 you hit ${target.high}+ on all sets.`
+      };
+    }
+    if (last2.minReps >= target.low)
+      return {
+        state: "hold",
+        kg: last2.w,
+        inc,
+        target,
+        msg: `Same weight \u2014 beat ${last2.minReps} rep${last2.minReps === 1 ? "" : "s"} to move up.`
+      };
+    let fails = 0;
+    for (const s2 of hist) {
+      const ev = evalSession(s2, target);
+      if (!ev || ev.count < target.sets) break;
+      if (ev.w < last2.w - 1e-6) break;
+      if (ev.minReps >= target.low) break;
+      fails++;
+    }
+    if (fails >= 3) {
+      let cleared = null;
+      for (const s2 of hist) {
+        const ev = evalSession(s2, target);
+        if (ev && ev.count >= target.sets && ev.minReps >= target.high) {
+          cleared = ev.w;
+          break;
+        }
+      }
+      const drop10 = progSnap(last2.w * 0.9, inc);
+      const nextKg = cleared != null && cleared < last2.w ? cleared : drop10;
+      return { state: "deload", kg: nextKg, fails, inc, target, msg: `Stalled ${fails}\xD7 \u2014 deload to ${progRound1(nextKg)}.` };
+    }
+    return { state: "hold", kg: last2.w, inc, target, msg: `Hold \u2014 clear ${target.sets}\xD7${target.low} before adding weight.` };
+  }
+  function historyFor(name, logs, beforeDate, limit = 8) {
+    const key = (name || "").trim().toLowerCase();
+    const out = [];
+    for (const d of Object.keys(logs || {}).sort().reverse()) {
+      if (beforeDate && d >= beforeDate) continue;
+      const day = logs[d];
+      if (!day) continue;
+      const ex = (day.exercises || []).find((e) => (e.name || "").trim().toLowerCase() === key);
+      if (!ex || ex.skipped) continue;
+      if ((ex.sets || []).some((s2) => s2.rest != null)) continue;
+      if (!(ex.sets || []).some((s2) => s2.done)) continue;
+      out.push({ date: d, sets: ex.sets });
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
   var fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate()
   ).padStart(2, "0")}`;
@@ -31908,6 +32001,14 @@
     if (!m.planNames || typeof m.planNames !== "object") m.planNames = defaultPlanNames();
     for (const k2 of Object.keys(defaultPlanNames())) if (!m.planNames[k2]) m.planNames[k2] = k2;
     if (m.unit !== "kg" && m.unit !== "lb") m.unit = "kg";
+    for (const k2 of Object.keys(m.plans || {})) {
+      for (const ex of m.plans[k2] || []) {
+        const blocks = toBlocks(ex.sets || []);
+        const top = blocks[0] || { kg: 0, reps: 8 };
+        if (ex.repHigh == null) ex.repHigh = top.reps;
+        if (ex.inc == null) ex.inc = defaultInc(ex.name, top.kg);
+      }
+    }
     return m;
   }
   var SEED_DAY = "2026-07-14";
@@ -32296,7 +32397,7 @@
     const cur = LEVELS[i];
     const next = LEVELS[i + 1] || null;
     const pct = next ? Math.min(100, Math.round((xp - cur.xp) / (next.xp - cur.xp) * 100)) : 100;
-    return { index: i + 1, title: cur.title, next, pct };
+    return { index: i + 1, cur, title: cur.title, next, pct };
   }
   function StepInput({ label, value, onChange, steps }) {
     const bump = (d) => {
@@ -32399,7 +32500,7 @@
     onRename,
     onAdd,
     recentNames,
-    histFor
+    progFor
   }) {
     const exs = log2.exercises || [];
     const openExs = exs.map((e, i) => ({ e, i, left: e.skipped ? 0 : e.sets.filter((s2) => !s2.done).length })).filter((x2) => x2.left > 0);
@@ -32421,7 +32522,14 @@
     const si = curEx ? curEx.sets.findIndex((s2) => !s2.done) : -1;
     const cur = si >= 0 && curEx ? curEx.sets[si] : null;
     const editKey = `${curExI}:${si}`;
-    const dispV = edit && edit.key === editKey ? edit.v : cur ? toUnit(cur.kg, unit2) : 0;
+    const prog = curEx && progFor ? progFor(curEx.name) : null;
+    let suggestKg = null;
+    if (prog && si === 0 && cur) {
+      if (prog.state === "advance" && prog.kg > cur.kg) suggestKg = prog.kg;
+      else if (prog.state === "deload" && prog.kg < cur.kg) suggestKg = prog.kg;
+    }
+    const baseKg = suggestKg != null ? suggestKg : cur ? cur.kg : 0;
+    const dispV = edit && edit.key === editKey ? edit.v : toUnit(baseKg, unit2);
     const repsV = edit && edit.key === editKey ? edit.reps : cur ? cur.reps : 0;
     const bump = (dv, dr) => setEdit({
       key: editKey,
@@ -32462,16 +32570,6 @@
     };
     const dots = curEx ? curEx.sets.map((s2, k2) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `ws-dot ${s2.done ? "on" : ""}` }, k2)) : null;
     const CIRC = 2 * Math.PI * 54;
-    const goHeavier = (() => {
-      if (!curEx || !histFor) return false;
-      const last2 = histFor(curEx.name);
-      if (!last2 || !last2.sets || last2.sets.length < 2) return false;
-      const ls = last2.sets;
-      if (ls.some((s2) => s2.rest != null)) return false;
-      if (!ls.every((s2) => s2.done)) return false;
-      const r0 = ls[0].reps;
-      return ls.every((s2) => s2.reps === r0);
-    })();
     if (editor) {
       const isRename = editor.mode === "rename";
       const chips = (recentNames || []).filter((n) => !curEx || n.toLowerCase() !== curEx.name.toLowerCase()).slice(0, 6);
@@ -32694,7 +32792,10 @@
             " \xD7 ",
             cur.reps
           ] }),
-          goHeavier && si === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-hint", children: "Same reps on every set last time \u2014 add weight today" })
+          prog && si === 0 && prog.state !== "new" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `ws-prog ${prog.state}`, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-ic", children: prog.state === "advance" ? "\u25B2" : prog.state === "deload" ? "\u26A0" : "\u2192" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-msg", children: prog.msg })
+          ] })
         ] }) : null }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-foot", children: resting && pendingChoose ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
@@ -34703,8 +34804,17 @@
     const planSetRest = (split, ei, sec) => planUpdate(split, (arr) => {
       if (arr[ei]) arr[ei].rest = sec;
     });
+    const planSetHigh = (split, ei, v) => planUpdate(split, (arr) => {
+      const ex = arr[ei];
+      if (!ex) return;
+      const low = (toBlocks(ex.sets)[0] || { reps: 8 }).reps;
+      ex.repHigh = Math.max(low, Math.min(100, v));
+    });
+    const planSetInc = (split, ei, v) => planUpdate(split, (arr) => {
+      if (arr[ei]) arr[ei].inc = v;
+    });
     const planAddEx = (split) => planUpdate(split, (arr) => {
-      arr.push({ name: "New exercise", rest: 90, sets: fromBlocks([{ kg: 20, reps: 10, count: 3 }]) });
+      arr.push({ name: "New exercise", rest: 90, repHigh: 10, inc: 2.5, sets: fromBlocks([{ kg: 20, reps: 10, count: 3 }]) });
     });
     const planDelEx = (split, ei) => planUpdate(split, (arr) => {
       arr.splice(ei, 1);
@@ -35653,6 +35763,21 @@
         if (ex && ex.sets.length) return { date: d, sets: ex.sets };
       }
       return null;
+    };
+    const computeProg = (name, splitKey, beforeDate) => {
+      const planArr = (data.plans || {})[splitKey] || [];
+      const p = planArr.find((x2) => (x2.name || "").toLowerCase() === (name || "").toLowerCase());
+      const blocks = toBlocks(p ? p.sets : []);
+      const top = blocks[0] || { kg: 0, reps: 8, count: 3 };
+      const ex = {
+        name,
+        sets: top.count || (p ? p.sets.length : 3),
+        repLow: top.reps,
+        repHigh: Math.max(top.reps, p && p.repHigh != null ? p.repHigh : top.reps),
+        kg: top.kg,
+        inc: p && p.inc
+      };
+      return progressionFor(ex, historyFor(name, data.logs, beforeDate));
     };
     const EPLEY = (kg2, reps2) => kg2 * (1 + Math.min(reps2, 12) / 30);
     const bossReadiness = (t) => {
@@ -37303,6 +37428,11 @@
           ((data.plans || {})[wkSplit] || []).map((ex, ei) => {
             const blocks = toBlocks(ex.sets);
             const rest = REST_OPTS.includes(ex.rest) ? ex.rest : 90;
+            const low = (blocks[0] || {}).reps || 0;
+            const high = Math.max(low, ex.repHigh != null ? ex.repHigh : low);
+            const inc = ex.inc != null ? ex.inc : defaultInc(ex.name, (blocks[0] || {}).kg || 0);
+            const pg = computeProg(ex.name, wkSplit, null);
+            const chip = pg.state === "advance" ? { ic: "\u25B2", l: "Advance" } : pg.state === "deload" ? { ic: "\u26A0", l: "Deload" } : pg.state === "new" ? { ic: "\u2022", l: "New" } : { ic: "\u2192", l: "Hold" };
             return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-card", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cardtop", children: [
                 wkEdit && wkEdit.type === "ex" && wkEdit.ei === ei ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -37321,9 +37451,14 @@
                   " ",
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-pen", children: "\u270E" })
                 ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `wk-chip ${pg.state}`, children: [
+                  chip.ic,
+                  " ",
+                  chip.l
+                ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-del", onClick: () => planDelEx(wkSplit, ei), "aria-label": "Remove", children: "\u2715" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-auto", children: ex.lastHit ? `\u25B2 auto \xB7 last hit ${monthDay(ex.lastHit)}` : "\u25B2 set the starting weight" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-proghint", children: pg.msg }),
               blocks.map((b, bi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-blk", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-tag", children: blocks.length > 1 ? bi === 0 ? "Top" : "Drop" : "" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-grp", children: [
@@ -37352,6 +37487,24 @@
                 blocks.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rmblk", onClick: () => planRmBlock(wkSplit, ei, bi), "aria-label": "Remove block", children: "\u2715" })
               ] }, bi)),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-addb", onClick: () => planAddBlock(wkSplit, ei), children: "\uFF0B add drop set" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg-grp", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "ADVANCE AT" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planSetHigh(wkSplit, ei, high - 1), children: "\u2212" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: high }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planSetHigh(wkSplit, ei, high + 1), children: "\uFF0B" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-cfg-note", children: high > low ? `range ${low}\u2013${high}` : "all sets" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg-grp", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "STEP" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-incs", children: [1, 2, 2.5, 5].map((v) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: Math.abs(inc - v) < 1e-6 ? "on" : "", onClick: () => planSetInc(wkSplit, ei, v), children: [
+                    "+",
+                    kgTrim(v)
+                  ] }, v)) })
+                ] })
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-rest", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "lab", children: "Rest" }),
                 [45, 60, 90, 120].map((s2) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: rest === s2 ? "on" : "", onClick: () => planSetRest(wkSplit, ei, s2), children: [
@@ -38143,14 +38296,18 @@
               onRename: wsRename,
               onAdd: wsAdd,
               recentNames,
-              histFor: lastTimeFor,
+              progFor: (name) => computeProg(name, selLog.split || suggested, selDay),
               onSkipRest: () => {
                 setRestEnd(null);
                 setReadyAt(Date.now());
                 setNow(Date.now());
               },
               onFinish: finishSession,
-              onClose: () => setWsOpen(false)
+              onClose: () => {
+                setWsOpen(false);
+                setExpandedDay(null);
+                setTab("today");
+              }
             }
           ),
           liveSession && !wsOpen && tab === "today" && !fight && !bbOutro && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "ws-resume", onClick: () => setWsOpen(true), children: "\u23F1 SESSION" }),
@@ -38310,6 +38467,21 @@ body{margin:0;}
 .wk-nameinput{flex:1; min-width:0; border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.06); color:var(--chalk); border-radius:10px; padding:8px 10px; font-family:'Archivo'; font-weight:700; font-size:15px; outline:none;}
 .wk-del{background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; padding:4px 5px;}
 .wk-auto{font-size:9.5px; color:var(--steel); font-weight:700; letter-spacing:.02em; margin:5px 0 2px;}
+/* progression state chip + hint */
+.wk-chip{flex:0 0 auto; display:inline-flex; align-items:center; gap:4px; font-family:'Archivo'; font-weight:800; font-size:9.5px; letter-spacing:.04em; padding:4px 9px; border-radius:999px; border:1px solid; white-space:nowrap; text-transform:uppercase;}
+.wk-chip.advance{color:#7CD08A; background:rgba(88,179,104,.12); border-color:rgba(88,179,104,.36);}
+.wk-chip.hold{color:var(--steel); background:rgba(116,179,255,.1); border-color:rgba(116,179,255,.3);}
+.wk-chip.deload{color:#FF9B5A; background:rgba(232,93,38,.13); border-color:rgba(232,93,38,.42);}
+.wk-chip.new{color:var(--muted); background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.14);}
+.wk-proghint{font-size:10.5px; color:var(--muted); font-weight:600; margin:6px 0 2px; line-height:1.4;}
+/* per-lift progression config: advance-at reps + loadable step */
+.wk-cfg{display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; padding:11px 0 2px; margin-top:6px; border-top:1px dashed rgba(255,255,255,.08);}
+.wk-cfg-grp{display:flex; flex-direction:column; align-items:flex-start; gap:5px;}
+.wk-cfg-grp > small{font-size:8.5px; color:var(--muted); font-weight:800; letter-spacing:.08em;}
+.wk-cfg-note{font-size:9px; color:var(--muted); font-weight:700; letter-spacing:.02em;}
+.wk-incs{display:flex; gap:5px;}
+.wk-incs button{border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:var(--muted); border-radius:999px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer; font-variant-numeric:tabular-nums; font-family:'Archivo';}
+.wk-incs button.on{border-color:var(--gold); color:var(--gold); background:rgba(255,214,102,.12);}
 .wk-blk{display:flex; align-items:center; gap:8px; padding:11px 0 9px;}
 .wk-blk + .wk-blk{border-top:1px dashed rgba(255,255,255,.08);}
 .wk-tag{font-size:8.5px; font-weight:800; letter-spacing:.07em; color:var(--muted); width:30px; text-transform:uppercase; flex:0 0 auto;}
@@ -39305,6 +39477,17 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
   animation:wsHintIn .45s ease both, wsHintGlow 2.6s ease-in-out .45s infinite;}
 @keyframes wsHintIn{from{opacity:0; transform:translateY(6px);}to{opacity:1; transform:translateY(0);}}
 @keyframes wsHintGlow{0%,100%{text-shadow:0 0 0 rgba(255,138,60,0);}50%{text-shadow:0 0 11px rgba(255,138,60,.6);}}
+/* progression call \u2014 state-coloured pill under the plan line */
+.ws-prog{display:inline-flex; align-items:center; gap:8px; margin-top:14px; padding:9px 14px;
+  border-radius:999px; border:1px solid; max-width:330px; text-align:left;
+  font-size:12.5px; font-weight:800; letter-spacing:.005em; line-height:1.25;
+  animation:wsHintIn .5s cubic-bezier(.2,1,.3,1) both;}
+.ws-prog .ws-prog-ic{flex:0 0 auto; font-size:13px; line-height:1;}
+.ws-prog.advance{color:#7CD08A; border-color:rgba(88,179,104,.5); background:rgba(88,179,104,.12);
+  animation:wsHintIn .5s cubic-bezier(.2,1,.3,1) both, wsProgGlow 2.8s ease-in-out .5s infinite;}
+.ws-prog.deload{color:#FF9B5A; border-color:rgba(232,93,38,.55); background:rgba(232,93,38,.14);}
+.ws-prog.hold{color:var(--steel); border-color:rgba(116,179,255,.42); background:rgba(116,179,255,.1);}
+@keyframes wsProgGlow{0%,100%{box-shadow:0 0 0 rgba(88,179,104,0);}50%{box-shadow:0 0 15px rgba(88,179,104,.3);}}
 .ws-resteyebrow{font-size:19px; letter-spacing:.5em; font-weight:800; opacity:.6; margin-bottom:30px;}
 .ws-ringwrap{position:relative; width:190px; height:190px;}
 .ws-ringwrap svg{width:190px; height:190px; transform:rotate(-90deg);}
@@ -40426,4 +40609,5 @@ react/cjs/react-jsx-runtime.production.min.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
+
 </script></body></html>
