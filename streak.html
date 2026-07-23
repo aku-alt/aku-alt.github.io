@@ -31414,7 +31414,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.23-core.1";
+  var APP_VERSION = "v2026.07.23-core.3";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -37246,6 +37246,52 @@
         ] }),
         tab === "bosses" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BossReflow, {}),
+          (() => {
+            const cq = [
+              "You forged a body. Now bring me its center.",
+              "I keep the last gate \u2014 and open it only for those who can stand at it.",
+              "Every road through the iron ends at my throne. Few arrive."
+            ];
+            const ci = (tauntPeek.ck || 0) % cq.length;
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sg sg-ck", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sg-div", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", {}),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: "THE CORE SAGA" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "THE CORE KING \xB7 SEALED" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", {})
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sg-card sg-h2 sca-coreking", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "sg-art", style: artBG("core-king-card.jpg", "72% center") }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "sg-scrim" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sg-plaque", children: "A CROWN AWAITS" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sg-in", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "sg-rank sg-fin", children: "CORE \xB7 FINAL BOSS" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "sg-name sg-big", children: "THE CORE KING" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "sg-sub", children: "the weight at the center of you" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                    "button",
+                    {
+                      className: "sg-quote",
+                      onClick: () => setTauntPeek((p) => ({ ...p, ck: (p.ck || 0) + 1 })),
+                      children: [
+                        '"',
+                        cq[ci],
+                        '" ',
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\xB7 tap" })
+                      ]
+                    },
+                    ci
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sg-chips", style: { marginTop: 11 }, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sg-chip sg-hot", children: "THE GATE HOLDS" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sg-chip", children: "HIS HOUR IS NOT YET" })
+                  ] })
+                ] })
+              ] })
+            ] });
+          })(),
           stats.side.targets.map((t) => {
             const hit = !!t.achievedDate;
             const r2 = bossReadiness(t);
@@ -39801,6 +39847,10 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
   radial-gradient(110% 140% at 78% 55%, #1b2c4a 0%, #131c2e 55%, #0e1220 100%);}
 .sca-tfdl{background:radial-gradient(80% 120% at 80% 50%, rgba(155,225,93,.16) 0%, #0a0f0a 60%);}
 .sca-tfbp{background:radial-gradient(80% 120% at 80% 50%, rgba(255,107,74,.16) 0%, #120a08 60%);}
+.sca-coreking{background:radial-gradient(60% 85% at 78% 32%, rgba(255,180,80,.36) 0%, transparent 62%),
+  radial-gradient(110% 140% at 74% 60%, #3a2a0e 0%, #1c1408 55%, #120f0a 100%);}
+.sg-ck .sg-card.sca-coreking .sg-name{color:var(--gold); text-shadow:0 0 22px rgba(255,180,80,.35), 0 2px 10px rgba(0,0,0,.9);}
+.sg-ck .sg-quote{color:#f0c987;}
 .sg-scrim{position:absolute; inset:0;
   background:linear-gradient(90deg, rgba(12,10,10,.94) 0%, rgba(12,10,10,.8) 42%, rgba(12,10,10,.18) 74%, rgba(12,10,10,.03) 100%);}
 .sg-in{position:absolute; inset:0; z-index:2; padding:16px 16px 14px; min-height:0;
