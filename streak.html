@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.23-deck.2";
+  var APP_VERSION = "v2026.07.23-deck.3";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -34505,9 +34505,20 @@
     }
     function BossDeck({ children }) {
       const ref = (0, import_react41.useRef)(null);
+      const [n, setN] = (0, import_react41.useState)(0);
+      const [active, setActive] = (0, import_react41.useState)(0);
       (0, import_react41.useEffect)(() => {
         const el = ref.current;
         if (!el) return;
+        const meta = { count: 1, stride: el.clientWidth };
+        const measure = () => {
+          const cards = el.querySelectorAll(".pc");
+          meta.count = Math.max(1, Math.round(cards.length / 2));
+          meta.stride = cards.length > 1 ? Math.abs(cards[1].offsetLeft - cards[0].offsetLeft) : el.clientWidth;
+          setN(meta.count);
+        };
+        measure();
+        const r2 = requestAnimationFrame(measure);
         let ticking = false;
         const onScroll = () => {
           if (ticking) return;
@@ -34515,15 +34526,23 @@
           requestAnimationFrame(() => {
             const half = el.scrollWidth / 2;
             if (half > 4 && el.scrollLeft >= half) el.scrollLeft -= half;
+            if (meta.stride > 0) setActive((Math.round(el.scrollLeft / meta.stride) % meta.count + meta.count) % meta.count);
             ticking = false;
           });
         };
         el.addEventListener("scroll", onScroll, { passive: true });
-        return () => el.removeEventListener("scroll", onScroll);
+        return () => {
+          cancelAnimationFrame(r2);
+          el.removeEventListener("scroll", onScroll);
+        };
       }, []);
-      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "boss-deck", ref, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "contents" }, children }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "contents" }, children })
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "boss-deck", ref, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "contents" }, children }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "contents" }, children })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "boss-dots", children: Array.from({ length: n }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: i === active ? "on" : "" }, i)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "boss-swipe", children: "\u2039 swipe the deck \u203A" })
       ] });
     }
     function PlayCard({ art, artPos, tint, eyebrow, ebColor, status, statusCls, name, big, epithet, taunt, onTaunt, plaque, onRemove, children }) {
@@ -37273,266 +37292,278 @@
             )
           ] })
         ] }),
-        tab === "bosses" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(BossDeck, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BossReflow, {}),
-          (() => {
-            const cq = [
-              "You forged a body. Now bring me its center.",
-              "I keep the last gate \u2014 and open it only for those who can stand at it.",
-              "Every road through the iron ends at my throne. Few arrive."
-            ];
-            const ci = (tauntPeek.ck || 0) % cq.length;
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-              PlayCard,
-              {
-                art: "core-king-card.jpg",
-                artPos: "64% center",
-                tint: "t-coreking",
-                eyebrow: "Core \xB7 Final Boss",
-                ebColor: "var(--gold)",
-                status: "Sealed",
-                statusCls: "st-sealed",
-                name: "THE CORE KING",
-                big: true,
-                epithet: "the weight at the center of you",
-                plaque: "A crown awaits",
-                taunt: `\u201C${cq[ci]}\u201D`,
-                onTaunt: () => setTauntPeek((p) => ({ ...p, ck: (p.ck || 0) + 1 })),
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pc-chip", children: "The gate holds" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pc-chip", children: "His hour is not yet" })
-                ]
-              }
-            );
-          })(),
-          stats.side.targets.map((t) => {
-            const hit = !!t.achievedDate;
-            const r2 = bossReadiness(t);
-            const gi = gateInfoFor(t);
-            const tr = trialInfoFor(t);
-            const isDL = /deadlift/i.test(t.name);
-            const qi = (tauntPeek[t.id] || 0) % gi.taunts.length;
-            const felled = Object.values(data.trueForms || {}).filter((id) => id === t.id).length;
-            const bossNm = isDL ? "THE WYRM" : "THE SKY-DRAGON";
-            const formNm = isDL ? "THE WYRM" : "THE DRAGON";
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_react41.default.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        tab === "bosses" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "boss-tab", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "boss-head", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { className: "boss-h1", children: "Bosses" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "boss-hsub", children: "Your hand \u2014 swipe to face them." })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "boss-count", children: [
+              1 + stats.side.targets.length * 4 + 1 + ((data.jester || {}).stands === todayStr ? 1 : 0),
+              " in play"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(BossDeck, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BossReflow, {}),
+            (() => {
+              const cq = [
+                "You forged a body. Now bring me its center.",
+                "I keep the last gate \u2014 and open it only for those who can stand at it.",
+                "Every road through the iron ends at my throne. Few arrive."
+              ];
+              const ci = (tauntPeek.ck || 0) % cq.length;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
                 PlayCard,
                 {
-                  art: `card-${isDL ? "warden" : "shade"}.jpg`,
-                  artPos: isDL ? "76% 30%" : "80% 25%",
-                  tint: isDL ? "t-warden" : "t-shade",
-                  eyebrow: `${isDL ? "The Barrow" : "The Sky"} \xB7 Gatekeeper`,
-                  ebColor: isDL ? "var(--ember)" : "#B48CFF",
-                  status: t.gateBroken ? "Path clear" : "Gate stands",
-                  statusCls: t.gateBroken ? "st-slain" : "st-ready",
-                  name: gi.name,
-                  epithet: isDL ? "bars the barrow door" : "sits on your sternum",
-                  taunt: gi.taunts[qi],
-                  onTaunt: () => setTauntPeek((prev) => ({ ...prev, [t.id]: qi + 1 })),
-                  children: t.gateBroken ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip gold", children: [
-                    "Gate broken \xB7 ",
-                    monthDay(t.gateBroken)
-                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Break the gate" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
-                        wShow(isDL ? 140 : 107.5, data.unit),
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: UL })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Bounty" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
-                        "+",
-                        GATE_XP,
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "XP" })
-                      ] })
-                    ] })
-                  ] })
+                  art: "core-king-card.jpg",
+                  artPos: "64% center",
+                  tint: "t-coreking",
+                  eyebrow: "Core \xB7 Final Boss",
+                  ebColor: "var(--gold)",
+                  status: "Sealed",
+                  statusCls: "st-sealed",
+                  name: "THE CORE KING",
+                  big: true,
+                  epithet: "the weight at the center of you",
+                  plaque: "A crown awaits",
+                  taunt: `\u201C${cq[ci]}\u201D`,
+                  onTaunt: () => setTauntPeek((p) => ({ ...p, ck: (p.ck || 0) + 1 })),
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pc-chip", children: "The gate holds" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pc-chip", children: "His hour is not yet" })
+                  ]
                 }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                PlayCard,
-                {
-                  art: `card-${isDL ? "den" : "nightmare"}.jpg`,
-                  artPos: isDL ? "70% 60%" : "78% 18%",
-                  tint: isDL ? "t-den" : "t-nightmare",
-                  eyebrow: "Trial \xB7 every 2 weeks",
-                  ebColor: isDL ? "var(--ember)" : "#B48CFF",
-                  status: tr.avail ? "Open" : "Resting",
-                  statusCls: tr.avail ? "st-open" : "st-rest",
-                  name: tr.name,
-                  epithet: tr.cry.toLowerCase(),
-                  children: tr.avail ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pc-enter", onClick: () => startTrial(t), children: "Enter \u203A" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
+              );
+            })(),
+            stats.side.targets.map((t) => {
+              const hit = !!t.achievedDate;
+              const r2 = bossReadiness(t);
+              const gi = gateInfoFor(t);
+              const tr = trialInfoFor(t);
+              const isDL = /deadlift/i.test(t.name);
+              const qi = (tauntPeek[t.id] || 0) % gi.taunts.length;
+              const felled = Object.values(data.trueForms || {}).filter((id) => id === t.id).length;
+              const bossNm = isDL ? "THE WYRM" : "THE SKY-DRAGON";
+              const formNm = isDL ? "THE WYRM" : "THE DRAGON";
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_react41.default.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  PlayCard,
+                  {
+                    art: `card-${isDL ? "warden" : "shade"}.jpg`,
+                    artPos: isDL ? "76% 30%" : "80% 25%",
+                    tint: isDL ? "t-warden" : "t-shade",
+                    eyebrow: `${isDL ? "The Barrow" : "The Sky"} \xB7 Gatekeeper`,
+                    ebColor: isDL ? "var(--ember)" : "#B48CFF",
+                    status: t.gateBroken ? "Path clear" : "Gate stands",
+                    statusCls: t.gateBroken ? "st-slain" : "st-ready",
+                    name: gi.name,
+                    epithet: isDL ? "bars the barrow door" : "sits on your sternum",
+                    taunt: gi.taunts[qi],
+                    onTaunt: () => setTauntPeek((prev) => ({ ...prev, [t.id]: qi + 1 })),
+                    children: t.gateBroken ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip gold", children: [
+                      "Gate broken \xB7 ",
+                      monthDay(t.gateBroken)
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Survived" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "v", children: tr.count })
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Break the gate" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
+                          wShow(isDL ? 140 : 107.5, data.unit),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: UL })
+                        ] })
                       ] }),
                       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Bounty" }),
                         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
                           "+",
-                          TRIAL_XP,
+                          GATE_XP,
                           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "XP" })
                         ] })
                       ] })
                     ] })
-                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-rline", children: [
-                    "The den rests \xB7 returns ",
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: "stronger" }),
-                    " in ",
-                    tr.reopenIn,
-                    " d \xB7 survived ",
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: tr.count })
-                  ] })
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  PlayCard,
+                  {
+                    art: `card-${isDL ? "den" : "nightmare"}.jpg`,
+                    artPos: isDL ? "70% 60%" : "78% 18%",
+                    tint: isDL ? "t-den" : "t-nightmare",
+                    eyebrow: "Trial \xB7 every 2 weeks",
+                    ebColor: isDL ? "var(--ember)" : "#B48CFF",
+                    status: tr.avail ? "Open" : "Resting",
+                    statusCls: tr.avail ? "st-open" : "st-rest",
+                    name: tr.name,
+                    epithet: tr.cry.toLowerCase(),
+                    children: tr.avail ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pc-enter", onClick: () => startTrial(t), children: "Enter \u203A" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Survived" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "v", children: tr.count })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Bounty" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
+                            "+",
+                            TRIAL_XP,
+                            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "XP" })
+                          ] })
+                        ] })
+                      ] })
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-rline", children: [
+                      "The den rests \xB7 returns ",
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: "stronger" }),
+                      " in ",
+                      tr.reopenIn,
+                      " d \xB7 survived ",
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: tr.count })
+                    ] })
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  PlayCard,
+                  {
+                    art: `card-${isDL ? "wyrm" : "dragon"}.jpg`,
+                    artPos: isDL ? "82% 20%" : "84% 16%",
+                    tint: isDL ? "t-wyrm" : "t-dragon",
+                    eyebrow: `${isDL ? "The Barrow" : "The Sky"} \xB7 Final Boss`,
+                    ebColor: "var(--gold)",
+                    status: hit ? "Slain" : t.gateBroken ? "Ready" : "Sealed",
+                    statusCls: hit ? "st-slain" : t.gateBroken ? "st-ready" : "st-sealed",
+                    name: bossNm,
+                    big: true,
+                    epithet: isDL ? "coiled beneath the barrow" : "leaning on your chest",
+                    plaque: `+${TARGET_XP} XP on the kill`,
+                    onRemove: () => removeTarget(t.id),
+                    children: hit ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip gold", children: [
+                      "Slain \xB7 ",
+                      monthDay(t.achievedDate)
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "pc-rbar", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${r2.pct}%` } }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "pc-rline", children: r2.cur > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                        "est. ",
+                        wShow(r2.cur, data.unit),
+                        " ",
+                        UL,
+                        " \xB7 needs ~",
+                        wShow(r2.req, data.unit),
+                        " ",
+                        UL
+                      ] }) : "log a lift for a baseline" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Demand" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
+                            wDisp(t.kg),
+                            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("u", { children: [
+                              "\xD7",
+                              t.reps
+                            ] })
+                          ] })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Ready" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
+                            r2.pct,
+                            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "%" })
+                          ] })
+                        ] })
+                      ] })
+                    ] })
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  PlayCard,
+                  {
+                    art: felled > 0 ? `card-trueform-${isDL ? "dl" : "bp"}.jpg` : null,
+                    tint: felled > 0 ? isDL ? "t-tfdl" : "t-tfbp" : "t-locked",
+                    eyebrow: felled > 0 ? "True form" : "Something else",
+                    ebColor: felled > 0 ? isDL ? "#9BE15D" : "#FF6B4A" : "var(--muted)",
+                    status: felled > 0 ? "Felled" : "Hidden",
+                    statusCls: felled > 0 ? "st-slain" : "st-rest",
+                    name: felled > 0 ? formNm : "? ? ?",
+                    epithet: felled > 0 ? isDL ? "wakes beneath the barrow" : "lands on your chest" : isDL ? "sleeps beneath the barrow" : "stirs behind the storm",
+                    children: felled > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip gold", children: [
+                      "Felled: ",
+                      felled
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pc-chip", children: "Revealed when it wakes" })
+                  }
+                )
+              ] }, t.id);
+            }),
+            (() => {
+              const hy = data.hydra || {};
+              const cool = hy.last ? Math.max(0, 7 - daysBetween(hy.last, selDay)) : 0;
+              const ready = cool <= 0;
+              const slain = hy.slain || 0;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 PlayCard,
                 {
-                  art: `card-${isDL ? "wyrm" : "dragon"}.jpg`,
-                  artPos: isDL ? "82% 20%" : "84% 16%",
-                  tint: isDL ? "t-wyrm" : "t-dragon",
-                  eyebrow: `${isDL ? "The Barrow" : "The Sky"} \xB7 Final Boss`,
-                  ebColor: "var(--gold)",
-                  status: hit ? "Slain" : t.gateBroken ? "Ready" : "Sealed",
-                  statusCls: hit ? "st-slain" : t.gateBroken ? "st-ready" : "st-sealed",
-                  name: bossNm,
-                  big: true,
-                  epithet: isDL ? "coiled beneath the barrow" : "leaning on your chest",
-                  plaque: `+${TARGET_XP} XP on the kill`,
-                  onRemove: () => removeTarget(t.id),
-                  children: hit ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip gold", children: [
-                    "Slain \xB7 ",
-                    monthDay(t.achievedDate)
-                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "pc-rbar", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${r2.pct}%` } }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "pc-rline", children: r2.cur > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-                      "est. ",
-                      wShow(r2.cur, data.unit),
-                      " ",
-                      UL,
-                      " \xB7 needs ~",
-                      wShow(r2.req, data.unit),
-                      " ",
-                      UL
-                    ] }) : "log a lift for a baseline" }),
+                  art: "card-hydra.jpg",
+                  artPos: "100% 40%",
+                  tint: "t-hydra",
+                  eyebrow: "Summoned ordeal \xB7 every 7 days",
+                  ebColor: "var(--ember)",
+                  status: ready ? "Open" : "Regrowing",
+                  statusCls: ready ? "st-open" : "st-rest",
+                  name: "THE HYDRA",
+                  epithet: ready ? "five heads \xB7 one clock" : "growing back heads",
+                  children: ready ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pc-enter", onClick: summonHydra, children: "Summon \u203A" }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Demand" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Clean" }),
                         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
-                          wDisp(t.kg),
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("u", { children: [
-                            "\xD7",
-                            t.reps
-                          ] })
+                          "+40",
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "XP" })
                         ] })
                       ] }),
                       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Ready" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
-                          r2.pct,
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "%" })
-                        ] })
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Slain" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "v", children: slain })
                       ] })
                     ] })
+                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-rline", children: [
+                    "Growing back heads \xB7 returns in ",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+                      cool,
+                      " d"
+                    ] }),
+                    " \xB7 slain ",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: slain })
                   ] })
                 }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              );
+            })(),
+            (() => {
+              const jj = data.jester || {};
+              if (jj.stands !== todayStr) return null;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
                 PlayCard,
                 {
-                  art: felled > 0 ? `card-trueform-${isDL ? "dl" : "bp"}.jpg` : null,
-                  tint: felled > 0 ? isDL ? "t-tfdl" : "t-tfbp" : "t-locked",
-                  eyebrow: felled > 0 ? "True form" : "Something else",
-                  ebColor: felled > 0 ? isDL ? "#9BE15D" : "#FF6B4A" : "var(--muted)",
-                  status: felled > 0 ? "Felled" : "Hidden",
-                  statusCls: felled > 0 ? "st-slain" : "st-rest",
-                  name: felled > 0 ? formNm : "? ? ?",
-                  epithet: felled > 0 ? isDL ? "wakes beneath the barrow" : "lands on your chest" : isDL ? "sleeps beneath the barrow" : "stirs behind the storm",
-                  children: felled > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip gold", children: [
-                    "Felled: ",
-                    felled
-                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pc-chip", children: "Revealed when it wakes" })
-                }
-              )
-            ] }, t.id);
-          }),
-          (() => {
-            const hy = data.hydra || {};
-            const cool = hy.last ? Math.max(0, 7 - daysBetween(hy.last, selDay)) : 0;
-            const ready = cool <= 0;
-            const slain = hy.slain || 0;
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              PlayCard,
-              {
-                art: "card-hydra.jpg",
-                artPos: "100% 40%",
-                tint: "t-hydra",
-                eyebrow: "Summoned ordeal \xB7 every 7 days",
-                ebColor: "var(--ember)",
-                status: ready ? "Open" : "Regrowing",
-                statusCls: ready ? "st-open" : "st-rest",
-                name: "THE HYDRA",
-                epithet: ready ? "five heads \xB7 one clock" : "growing back heads",
-                children: ready ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pc-enter", onClick: summonHydra, children: "Summon \u203A" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stats", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Clean" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", children: [
-                        "+40",
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: "XP" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-stat", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Slain" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "v", children: slain })
+                  art: "card-jester.jpg",
+                  artPos: "center 40%",
+                  tint: "t-jester",
+                  eyebrow: "The tent stands \xB7 tonight only",
+                  ebColor: "var(--gold)",
+                  status: "Open",
+                  statusCls: "st-open",
+                  name: "THE JESTER",
+                  epithet: "three cards \xB7 gone at midnight",
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pc-enter", onClick: () => {
+                      jesterSpend();
+                      setJesterEnc({ mode: "card" });
+                    }, children: "Enter the tent \u203A" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip", children: [
+                      "Banks broken: ",
+                      jj.banks || 0
                     ] })
-                  ] })
-                ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pc-rline", children: [
-                  "Growing back heads \xB7 returns in ",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-                    cool,
-                    " d"
-                  ] }),
-                  " \xB7 slain ",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: slain })
-                ] })
-              }
-            );
-          })(),
-          (() => {
-            const jj = data.jester || {};
-            if (jj.stands !== todayStr) return null;
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-              PlayCard,
-              {
-                art: "card-jester.jpg",
-                artPos: "center 40%",
-                tint: "t-jester",
-                eyebrow: "The tent stands \xB7 tonight only",
-                ebColor: "var(--gold)",
-                status: "Open",
-                statusCls: "st-open",
-                name: "THE JESTER",
-                epithet: "three cards \xB7 gone at midnight",
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "pc-enter", onClick: () => {
-                    jesterSpend();
-                    setJesterEnc({ mode: "card" });
-                  }, children: "Enter the tent \u203A" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pc-chip", children: [
-                    "Banks broken: ",
-                    jj.banks || 0
-                  ] })
-                ]
-              }
-            );
-          })()
+                  ]
+                }
+              );
+            })()
+          ] })
         ] }),
         tab === "workouts" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "wk-screen", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { className: "wk-h1", children: "Workouts" }),
@@ -39893,14 +39924,22 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .sg-demand small{font-size:14px; color:var(--muted); font-weight:700;}
 .sg-demand em{font-style:normal; font-size:26px;}
 /* ===== boss cards as a swipeable playing-card deck ===== */
-.boss-deck{display:flex; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch; scroll-behavior:auto; padding:12px 0 24px;
-  scrollbar-width:none; margin:0 -16px;}
+.boss-tab{display:flex; flex-direction:column; height:calc(100vh - 106px); min-height:520px;}
+.boss-head{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; padding:4px 4px 2px;}
+.boss-h1{font-family:'Anton'; font-weight:400; font-size:27px; letter-spacing:.05em; text-transform:uppercase; margin:0;}
+.boss-hsub{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.boss-count{font-family:'Cinzel'; font-size:10px; letter-spacing:.1em; color:var(--gold); border:1px solid rgba(255,214,102,.35); border-radius:999px; padding:5px 11px; text-transform:uppercase; white-space:nowrap; flex:0 0 auto;}
+.boss-deck{display:flex; flex:1 1 auto; align-items:center; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch; scroll-behavior:auto; padding:6px 0; scrollbar-width:none; margin:0 -16px; min-height:0;}
 .boss-deck::-webkit-scrollbar{display:none;}
-.pc{position:relative; flex:0 0 76vw; width:76vw; max-width:322px; aspect-ratio:3/4.4; overflow:hidden;
-  border-radius:17px; margin-left:14px; scroll-snap-align:center;
+.boss-dots{display:flex; gap:7px; justify-content:center; align-items:center; padding:10px 0 4px;}
+.boss-dots i{width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.16); transition:.3s;}
+.boss-dots i.on{background:var(--ember); width:20px; border-radius:3px;}
+.boss-swipe{text-align:center; font-family:'Cinzel'; font-size:10px; color:var(--muted); letter-spacing:.14em; text-transform:uppercase; padding-bottom:4px;}
+.pc{position:relative; flex:0 0 82vw; width:82vw; max-width:352px; height:90%; max-height:620px; overflow:hidden;
+  border-radius:18px; margin-left:14px; scroll-snap-align:center;
   border:1px solid rgba(255,200,110,.32);
-  box-shadow:0 22px 55px rgba(0,0,0,.6), 0 0 40px rgba(232,93,38,.1);
+  box-shadow:0 24px 58px rgba(0,0,0,.62), 0 0 44px rgba(232,93,38,.1);
   background:radial-gradient(110% 130% at 72% 40%, #241a12, #120d0a 60%, #0c0908);}
 .pc:last-child{margin-right:14px;}
 .pc-art{position:absolute; inset:0; background-size:cover; background-position:64% center;}
