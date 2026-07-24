@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.23-deck.3";
+  var APP_VERSION = "v2026.07.24-jfix.1";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -34655,6 +34655,13 @@
         return next;
       });
       flash("Clock running \u23F1");
+      try {
+        ["road-jester.jpg", "road-jester.jpeg", "card-jester.jpg", "bb-jester.jpg"].forEach((f) => {
+          const im = new Image();
+          im.src = f;
+        });
+      } catch (e) {
+      }
     };
     const finishSession = () => {
       let summary = null;
@@ -38452,7 +38459,11 @@
                 onEnter: jesterSpend,
                 onAnte: jesterAnte,
                 onResolve: jesterResolve,
-                onClose: () => setJesterEnc(null)
+                onClose: () => {
+                  setJesterEnc(null);
+                  setExpandedDay(null);
+                  setTab("today");
+                }
               }
             );
           })(),
@@ -40020,17 +40031,22 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .sg-jname{color:#C77DFF !important; text-shadow:0 0 24px rgba(199,125,255,.5), 0 2px 12px rgba(0,0,0,.9) !important;}
 .sg-jenter{border-color:rgba(199,125,255,.8) !important; color:#C77DFF !important;
   text-shadow:0 0 14px rgba(199,125,255,.5) !important;}
+/* Root is OPAQUE from the first frame \u2014 no fade on the container. A stalled
+   opacity animation on a slow phone left the screen underneath visible; the
+   "fade to black" drama now comes from the scene opening out of black inside. */
 .jj{position:fixed; inset:0; z-index:60; background:#0a0612; overflow:hidden;
-  font-family:'Archivo',sans-serif; text-align:center; animation:jjWake .45s ease both;}
+  font-family:'Archivo',sans-serif; text-align:center;}
 @keyframes jjWake{from{opacity:0;}to{opacity:1;}}
 /* ---- cinematic jester intro (the road) ---- */
 .jj-cine{z-index:2;}
 .jj-cine-scene{position:absolute; inset:0; z-index:1; background-size:cover; background-position:center;
-  opacity:0; animation:jjSceneOpen 2.7s cubic-bezier(.2,.7,.25,1) .55s both;}
+  opacity:0; animation:jjSceneOpen 2.7s cubic-bezier(.2,.7,.25,1) .55s both;
+  will-change:transform,opacity; transform:translateZ(0); backface-visibility:hidden;}
 .jj-cine-scene::after{content:""; position:absolute; inset:0; background:radial-gradient(120% 85% at 50% 45%, transparent 55%, rgba(6,4,12,.6) 100%);}
 @keyframes jjSceneOpen{0%{opacity:0; transform:scale(1.14);}100%{opacity:1; transform:scale(1);}}
 .jj-cine-card{position:absolute; inset:0; z-index:3; display:flex; align-items:center; justify-content:center;
-  padding:22px; opacity:0; background:rgba(6,4,12,0); animation:jjCardIn 1.5s cubic-bezier(.2,.8,.25,1) 5s both;}
+  padding:22px; opacity:0; background:rgba(6,4,12,0); animation:jjCardIn 1.5s cubic-bezier(.2,.8,.25,1) 5s both;
+  will-change:transform,opacity;}
 @keyframes jjCardIn{0%{opacity:0; transform:scale(1.05) translateY(18px); background:rgba(6,4,12,0);}
   100%{opacity:1; transform:scale(1) translateY(0); background:rgba(6,4,12,.5);}}
 .jj-cine-card.jj-entering{opacity:0; transform:scale(1.1); transition:opacity .7s ease, transform .7s ease; animation:none;}
