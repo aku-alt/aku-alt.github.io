@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.24-jfix.1";
+  var APP_VERSION = "v2026.07.24-ss.1";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -32509,6 +32509,7 @@
     const [selNext, setSelNext] = (0, import_react41.useState)(null);
     const [startAt, setStartAt] = (0, import_react41.useState)(null);
     const [edit, setEdit] = (0, import_react41.useState)(null);
+    const [ssFlash, setSsFlash] = (0, import_react41.useState)(false);
     const [editor, setEditor] = (0, import_react41.useState)(null);
     const [edVal, setEdVal] = (0, import_react41.useState)("");
     const resting = !!(restEnd && now < restEnd);
@@ -32548,11 +32549,34 @@
         else setPendingChoose(false);
       }
     }, [resting]);
+    const ssPartnerIdx = (idx) => {
+      const e = exs[idx];
+      if (!e || !e.ss) return -1;
+      return exs.findIndex((x2, k2) => k2 !== idx && x2.ss === e.ss && !x2.skipped);
+    };
     const logIt = () => {
       if (!cur) return;
       const wasLastOfEx = curEx.sets.filter((s2) => !s2.done).length === 1;
+      const pIdx = ssPartnerIdx(curExI);
       onLog(curExI, si, fromUnit(dispV, unit2), repsV);
       setEdit(null);
+      if (pIdx >= 0) {
+        const p = exs[pIdx];
+        const myDone = curEx.sets.filter((s2) => s2.done).length + 1;
+        const pDone = p.sets.filter((s2) => s2.done).length;
+        const pUndone = p.sets.length - pDone;
+        if (pUndone > 0 && pDone < myDone) {
+          setCurExI(pIdx);
+          setSsFlash(true);
+          return;
+        }
+        if (pUndone > 0) {
+          setCurExI(pIdx);
+          setSsFlash(false);
+          return;
+        }
+      }
+      setSsFlash(false);
       if (wasLastOfEx) {
         setPendingChoose(true);
         setSelNext(null);
@@ -32563,6 +32587,7 @@
       setCurExI(i);
       setPendingChoose(false);
       setSelNext(null);
+      setSsFlash(false);
     };
     const dots = curEx ? curEx.sets.map((s2, k2) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `ws-dot ${s2.done ? "on" : ""}` }, k2)) : null;
     const CIRC = 2 * Math.PI * 54;
@@ -32625,7 +32650,10 @@
               style: { animationDelay: `${0.08 + k2 * 0.08}s` },
               onClick: () => setStartAt(idx),
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-ex", children: e.name }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "ws-ex", children: [
+                  e.ss ? "\u26D3 " : "",
+                  e.name
+                ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "ws-plan", children: [
                   e.sets.length,
                   " \xD7 ",
@@ -32706,7 +32734,10 @@
                 className: `ws-row pick ${(selNext == null ? pickable[0].i : selNext) === x2.i ? "sel" : ""}`,
                 onClick: () => setSelNext(x2.i),
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-ex", children: x2.e.name }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "ws-ex", children: [
+                    x2.e.ss ? "\u26D3 " : "",
+                    x2.e.name
+                  ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "ws-plan", children: [
                     x2.left,
                     " left \xB7 ",
@@ -32788,6 +32819,10 @@
             " \xD7 ",
             cur.reps
           ] }),
+          curEx.ss && (() => {
+            const pI = ssPartnerIdx(curExI);
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `ws-ssline ${ssFlash ? "hot" : ""}`, children: ssFlash ? "\u26D3 SWITCH \u2014 NO REST, STRAIGHT OVER" : pI >= 0 ? `\u26D3 superset \xB7 with ${exs[pI].name}` : null }, ssFlash ? "sw" : "ln");
+          })(),
           prog && si === 0 && prog.state !== "new" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `ws-prog ${prog.state}`, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-ic", children: prog.state === "advance" ? "\u25B2" : prog.state === "deload" ? "\u26A0" : "\u2192" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-msg", children: prog.msg })
@@ -34143,6 +34178,7 @@
     const [tab, setTab] = (0, import_react41.useState)("today");
     const [wkSplit, setWkSplit] = (0, import_react41.useState)("PUSH");
     const [wkPad, setWkPad] = (0, import_react41.useState)(null);
+    const [wkPairSel, setWkPairSel] = (0, import_react41.useState)(null);
     const [wkPadStr, setWkPadStr] = (0, import_react41.useState)("");
     const [wkPadFresh, setWkPadFresh] = (0, import_react41.useState)(false);
     const [wkEdit, setWkEdit] = (0, import_react41.useState)(null);
@@ -34204,7 +34240,13 @@
       if (!absTimer || absTimer.end == null || now < absTimer.end) return;
       beepAndBuzz();
       if (absTimer.phase === "ready") absGoMove(0);
-      else if (absTimer.phase === "move") absAfterMove(absTimer.i);
+      else if (absTimer.phase === "move") {
+        const m = ABS_CIRCUIT[absTimer.i];
+        if (m && m.type === "hold" && m.per && (absTimer.side || 1) < 2)
+          setAbsTimer({ phase: "flip", i: absTimer.i, end: Date.now() + 5e3 });
+        else absAfterMove(absTimer.i);
+      } else if (absTimer.phase === "flip")
+        setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTarget(ABS_CIRCUIT[absTimer.i], data.absLevel) * 1e3 });
       else if (absTimer.phase === "rest") absGoMove(absTimer.i + 1);
     }, [now, absTimer]);
     (0, import_react41.useEffect)(() => {
@@ -34816,6 +34858,16 @@
           if (!day.exercises.some((e) => e.name.toLowerCase() === t.name.toLowerCase()))
             day.exercises.push({ name: t.name, sets: t.sets.map((s2) => ({ ...s2 })), rest: t.rest });
         }
+        plan.forEach((t, k2) => {
+          if (t.ssNext && plan[k2 + 1]) {
+            const a2 = day.exercises.find((e) => e.name.toLowerCase() === t.name.toLowerCase());
+            const b = day.exercises.find((e) => e.name.toLowerCase() === plan[k2 + 1].name.toLowerCase());
+            if (a2 && b) {
+              a2.ss = "ss" + k2;
+              b.ss = "ss" + k2;
+            }
+          }
+        });
         day.split = tname;
         next.logs[selDay] = day;
         const { awarded } = markOn(next, selDay, "gym");
@@ -34826,6 +34878,38 @@
         return next;
       });
       setExpandedDay(selDay);
+    };
+    const ssSetTotal = (ex, n) => {
+      if (!ex || n < 1) return;
+      if (ex.sets.length > n) ex.sets = ex.sets.slice(0, n);
+      else while (ex.sets.length < n) ex.sets.push({ ...ex.sets[ex.sets.length - 1] });
+    };
+    const ssSyncPartner = (arr, ei) => {
+      const ex = arr[ei];
+      if (!ex) return;
+      if (ex.ssNext && arr[ei + 1]) ssSetTotal(arr[ei + 1], ex.sets.length);
+      else if (ei > 0 && arr[ei - 1] && arr[ei - 1].ssNext) ssSetTotal(arr[ei - 1], ex.sets.length);
+    };
+    const planLinkNext = (split, ei) => planUpdate(split, (arr) => {
+      if (!arr[ei] || !arr[ei + 1]) return;
+      arr[ei].ssNext = true;
+      ssSetTotal(arr[ei + 1], arr[ei].sets.length);
+    });
+    const planUnlink = (split, ei) => planUpdate(split, (arr) => {
+      if (arr[ei]) arr[ei].ssNext = false;
+    });
+    const planPairWith = (split, ei, j) => {
+      planUpdate(split, (arr) => {
+        if (!arr[ei] || !arr[j] || ei === j) return;
+        if (j > 0 && arr[j - 1].ssNext) arr[j - 1].ssNext = false;
+        const [moved] = arr.splice(j, 1);
+        moved.ssNext = false;
+        const base = j < ei ? ei - 1 : ei;
+        arr.splice(base + 1, 0, moved);
+        arr[base].ssNext = true;
+        ssSetTotal(arr[base + 1], arr[base].sets.length);
+      });
+      setWkPairSel(null);
     };
     const planUpdate = (split, fn) => setData((prev) => {
       const next = clone(prev);
@@ -34842,6 +34926,7 @@
       if (!blocks[bi]) return;
       blocks[bi] = { ...blocks[bi], ...patch };
       ex.sets = fromBlocks(blocks);
+      if (patch.count != null) ssSyncPartner(arr, ei);
     });
     const planAddBlock = (split, ei) => planUpdate(split, (arr) => {
       const ex = arr[ei];
@@ -34850,6 +34935,7 @@
       const last2 = blocks[blocks.length - 1] || { kg: 20, reps: 10, count: 3 };
       blocks.push({ kg: Math.max(0, last2.kg - 10), reps: last2.reps, count: last2.count });
       ex.sets = fromBlocks(blocks);
+      ssSyncPartner(arr, ei);
     });
     const planRmBlock = (split, ei, bi) => planUpdate(split, (arr) => {
       const ex = arr[ei];
@@ -34858,6 +34944,7 @@
       if (blocks.length <= 1) return;
       blocks.splice(bi, 1);
       ex.sets = fromBlocks(blocks);
+      ssSyncPartner(arr, ei);
     });
     const planSetRest = (split, ei, sec) => planUpdate(split, (arr) => {
       if (arr[ei]) arr[ei].rest = sec;
@@ -34875,6 +34962,7 @@
       arr.push({ name: "New exercise", rest: 90, repHigh: 10, inc: 2.5, sets: fromBlocks([{ kg: 20, reps: 10, count: 3 }]) });
     });
     const planDelEx = (split, ei) => planUpdate(split, (arr) => {
+      if (ei > 0 && arr[ei - 1] && arr[ei - 1].ssNext) arr[ei - 1].ssNext = false;
       arr.splice(ei, 1);
     });
     const planRenameEx = (split, ei, name) => {
@@ -35139,7 +35227,7 @@
         return;
       }
       if (m.type === "hold") {
-        setAbsTimer({ phase: "move", i: idx, end: Date.now() + absTarget(m, data.absLevel) * 1e3 });
+        setAbsTimer({ phase: "move", i: idx, side: 1, end: Date.now() + absTarget(m, data.absLevel) * 1e3 });
       } else {
         setAbsTimer({ phase: "move", i: idx });
       }
@@ -35156,7 +35244,13 @@
     const absNext = () => {
       if (!absTimer) return;
       if (absTimer.phase === "ready") absGoMove(0);
-      else if (absTimer.phase === "move") absAfterMove(absTimer.i);
+      else if (absTimer.phase === "move") {
+        const m = ABS_CIRCUIT[absTimer.i];
+        if (m && m.type === "hold" && m.per && (absTimer.side || 1) < 2)
+          setAbsTimer({ phase: "flip", i: absTimer.i, end: Date.now() + 5e3 });
+        else absAfterMove(absTimer.i);
+      } else if (absTimer.phase === "flip")
+        setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTarget(ABS_CIRCUIT[absTimer.i], data.absLevel) * 1e3 });
       else if (absTimer.phase === "rest") absGoMove(absTimer.i + 1);
     };
     const finishAbs = () => {
@@ -35736,6 +35830,33 @@
       const exRest = exObj && REST_OPTS.includes(exObj.rest) ? exObj.rest : null;
       const base = exRest || (REST_OPTS.includes(data.restLen) ? data.restLen : 90);
       const exBase = REST_EX_OPTS.includes(data.restExLen) ? data.restExLen : 150;
+      if (exObj && exObj.ss && !plannedRest) {
+        const exsAll = (data.logs[selDay] || {}).exercises || [];
+        const pIdx = exsAll.findIndex((e, k2) => k2 !== i && e.ss === exObj.ss && !e.skipped);
+        if (pIdx >= 0) {
+          const p = exsAll[pIdx];
+          const myDone = exObj.sets.filter((s2) => s2.done).length + 1;
+          const pDone = p.sets.filter((s2) => s2.done).length;
+          const pUndone = p.sets.length - pDone;
+          if (pUndone > 0 && pDone < myDone) {
+            tickSound();
+            setRestEnd(null);
+            setReadyAt(Date.now());
+            setNow(Date.now());
+            return;
+          }
+          if (pUndone > 0 || !lastOfExercise) {
+            const leader = exsAll[Math.min(i, pIdx)];
+            const lRest = leader && REST_OPTS.includes(leader.rest) ? leader.rest : base;
+            tickSound();
+            setRestTotal(lRest);
+            setReadyAt(null);
+            setRestEnd(Date.now() + lRest * 1e3);
+            setNow(Date.now());
+            return;
+          }
+        }
+      }
       tickSound();
       const dur = plannedRest || (lastOfExercise ? exBase : base);
       setRestTotal(dur);
@@ -36743,9 +36864,9 @@
                   ] })
                 ] });
               }
-              const igniting = phase === "ready", holding = phase === "move";
+              const igniting = phase === "ready", holding = phase === "move", flipping = phase === "flip";
               const left = Math.max(0, Math.ceil((absTimer.end - now) / 1e3));
-              const seg = igniting ? 5 : holding ? absTarget(m, lvl2) : ABS_REST_S;
+              const seg = igniting || flipping ? 5 : holding ? absTarget(m, lvl2) : ABS_REST_S;
               const pct = Math.min(1, Math.max(0, 1 - left / seg));
               const urgent = holding && left <= 5;
               const col = igniting || holding ? "var(--ember)" : "var(--steel)";
@@ -36782,10 +36903,14 @@
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-center", children: [
                     holding && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "abs-ringname", children: [
                       m.name,
-                      m.per ? ` \xB7 ${m.per}` : ""
+                      m.per ? ` \xB7 side ${absTimer.side || 1} of 2` : ""
+                    ] }),
+                    flipping && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "abs-ringname", children: [
+                      m.name,
+                      " \xB7 other side"
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `sw-num ${urgent ? "urg" : ""}`, children: left }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-lab", children: igniting ? "GET READY" : holding ? "HOLD" : "REST" })
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-lab", children: igniting ? "GET READY" : holding ? "HOLD" : flipping ? "SWITCH SIDES" : "REST" })
                   ] })
                 ] }),
                 nextM && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-nextup", children: [
@@ -37607,92 +37732,99 @@
             "\u201D"
           ] }) }),
           ((data.plans || {})[wkSplit] || []).map((ex, ei) => {
+            const planArr = (data.plans || {})[wkSplit] || [];
             const blocks = toBlocks(ex.sets);
             const rest = REST_OPTS.includes(ex.rest) ? ex.rest : 90;
             const low = (blocks[0] || {}).reps || 0;
             const high = Math.max(low, ex.repHigh != null ? ex.repHigh : low);
             const inc = ex.inc != null ? ex.inc : defaultInc(ex.name, (blocks[0] || {}).kg || 0);
             const pg = computeProg(ex.name, wkSplit, null);
+            const inPair = (k2) => !!(planArr[k2] && planArr[k2].ssNext) || !!(k2 > 0 && planArr[k2 - 1] && planArr[k2 - 1].ssNext);
+            const isSecond = ei > 0 && planArr[ei - 1] && planArr[ei - 1].ssNext;
             const chip = pg.state === "advance" ? { ic: "\u25B2", l: "Advance" } : pg.state === "deload" ? { ic: "\u26A0", l: "Deload" } : pg.state === "new" ? { ic: "\u2022", l: "New" } : { ic: "\u2192", l: "Hold" };
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-card", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cardtop", children: [
-                wkEdit && wkEdit.type === "ex" && wkEdit.ei === ei ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "input",
-                  {
-                    className: "wk-nameinput",
-                    autoFocus: true,
-                    defaultValue: ex.name,
-                    onKeyDown: (e) => {
-                      if (e.key === "Enter") planRenameEx(wkSplit, ei, e.currentTarget.value);
-                    },
-                    onBlur: (e) => planRenameEx(wkSplit, ei, e.currentTarget.value)
-                  }
-                ) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wk-exname", onClick: () => setWkEdit({ type: "ex", ei }), children: [
-                  ex.name,
-                  " ",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-pen", children: "\u270E" })
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_react41.default.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `wk-card ${ex.ssNext ? "ss-a" : ""} ${isSecond ? "ss-b" : ""}`, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cardtop", children: [
+                  wkEdit && wkEdit.type === "ex" && wkEdit.ei === ei ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "input",
+                    {
+                      className: "wk-nameinput",
+                      autoFocus: true,
+                      defaultValue: ex.name,
+                      onKeyDown: (e) => {
+                        if (e.key === "Enter") planRenameEx(wkSplit, ei, e.currentTarget.value);
+                      },
+                      onBlur: (e) => planRenameEx(wkSplit, ei, e.currentTarget.value)
+                    }
+                  ) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wk-exname", onClick: () => setWkEdit({ type: "ex", ei }), children: [
+                    ex.name,
+                    " ",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-pen", children: "\u270E" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `wk-chip ${pg.state}`, children: [
+                    chip.ic,
+                    " ",
+                    chip.l
+                  ] }),
+                  !inPair(ei) && planArr.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-pairbtn", onClick: () => setWkPairSel({ split: wkSplit, ei }), "aria-label": "Superset with\u2026", children: "\u26D3" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-del", onClick: () => planDelEx(wkSplit, ei), "aria-label": "Remove", children: "\u2715" })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `wk-chip ${pg.state}`, children: [
-                  chip.ic,
-                  " ",
-                  chip.l
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-del", onClick: () => planDelEx(wkSplit, ei), "aria-label": "Remove", children: "\u2715" })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-proghint", children: pg.msg }),
-              blocks.map((b, bi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-blk", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-tag", children: blocks.length > 1 ? bi === 0 ? "Top" : "Drop" : "" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-grp", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "SETS" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { count: Math.max(1, b.count - 1) }), children: "\u2212" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: b.count }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { count: b.count + 1 }), children: "\uFF0B" })
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-proghint", children: pg.msg }),
+                blocks.map((b, bi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-blk", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-tag", children: blocks.length > 1 ? bi === 0 ? "Top" : "Drop" : "" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-grp", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "SETS" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { count: Math.max(1, b.count - 1) }), children: "\u2212" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: b.count }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { count: b.count + 1 }), children: "\uFF0B" })
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-grp", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "REPS" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { reps: Math.max(1, b.reps - 1) }), children: "\u2212" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: b.reps }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { reps: b.reps + 1 }), children: "\uFF0B" })
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "wk-wchip", onClick: () => openPad(wkSplit, ei, bi), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wk-wval", children: [
+                      wDisp(b.kg),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: data.unit })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-wedit", children: "\u270E tap to edit" })
+                  ] }),
+                  blocks.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rmblk", onClick: () => planRmBlock(wkSplit, ei, bi), "aria-label": "Remove block", children: "\u2715" })
+                ] }, bi)),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-addb", onClick: () => planAddBlock(wkSplit, ei), children: "\uFF0B add drop set" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg-grp", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "ADVANCE AT" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planSetHigh(wkSplit, ei, high - 1), children: "\u2212" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: high }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planSetHigh(wkSplit, ei, high + 1), children: "\uFF0B" })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-cfg-note", children: high > low ? `range ${low}\u2013${high}` : "all sets" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg-grp", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "STEP" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-incs", children: [1, 2, 2.5, 5].map((v) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: Math.abs(inc - v) < 1e-6 ? "on" : "", onClick: () => planSetInc(wkSplit, ei, v), children: [
+                      "+",
+                      kgTrim(v)
+                    ] }, v)) })
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-grp", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "REPS" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { reps: Math.max(1, b.reps - 1) }), children: "\u2212" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: b.reps }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planBlockPatch(wkSplit, ei, bi, { reps: b.reps + 1 }), children: "\uFF0B" })
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "wk-wchip", onClick: () => openPad(wkSplit, ei, bi), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wk-wval", children: [
-                    wDisp(b.kg),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: data.unit })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-wedit", children: "\u270E tap to edit" })
-                ] }),
-                blocks.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rmblk", onClick: () => planRmBlock(wkSplit, ei, bi), "aria-label": "Remove block", children: "\u2715" })
-              ] }, bi)),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-addb", onClick: () => planAddBlock(wkSplit, ei), children: "\uFF0B add drop set" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg-grp", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "ADVANCE AT" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cluster", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planSetHigh(wkSplit, ei, high - 1), children: "\u2212" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-num", children: high }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-rnd", onClick: () => planSetHigh(wkSplit, ei, high + 1), children: "\uFF0B" })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wk-cfg-note", children: high > low ? `range ${low}\u2013${high}` : "all sets" })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-cfg-grp", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "STEP" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-incs", children: [1, 2, 2.5, 5].map((v) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: Math.abs(inc - v) < 1e-6 ? "on" : "", onClick: () => planSetInc(wkSplit, ei, v), children: [
-                    "+",
-                    kgTrim(v)
-                  ] }, v)) })
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-rest", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "lab", children: "Rest" }),
+                  [45, 60, 90, 120].map((s2) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: rest === s2 ? "on" : "", onClick: () => planSetRest(wkSplit, ei, s2), children: [
+                    s2,
+                    "s"
+                  ] }, s2))
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-rest", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "lab", children: "Rest" }),
-                [45, 60, 90, 120].map((s2) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: rest === s2 ? "on" : "", onClick: () => planSetRest(wkSplit, ei, s2), children: [
-                  s2,
-                  "s"
-                ] }, s2))
-              ] })
+              ei < planArr.length - 1 && (ex.ssNext ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-sslink on", onClick: () => planUnlink(wkSplit, ei), children: "\u26D3 SUPERSET \u2014 tap to unlink" }) : !inPair(ei) && !inPair(ei + 1) ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-sslink", onClick: () => planLinkNext(wkSplit, ei), children: "\u26D3 link with next" }) : null)
             ] }, ei);
           }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wk-addex", onClick: () => planAddEx(wkSplit), children: "\uFF0B Add exercise" }),
@@ -38559,6 +38691,28 @@
         ] }),
         document.body
       ),
+      wkPairSel && (() => {
+        const arr = (data.plans || {})[wkPairSel.split] || [];
+        const me = arr[wkPairSel.ei];
+        const opts = arr.map((e, j) => ({ e, j })).filter(({ e, j }) => j !== wkPairSel.ei && !e.ssNext && !(j > 0 && arr[j - 1] && arr[j - 1].ssNext));
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-sheet-ov", onClick: () => setWkPairSel(null), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-sheet", onClick: (e) => e.stopPropagation(), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-sheet-hd", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "t", children: [
+              "\u26D3 Superset \u201C",
+              me ? me.name : "",
+              "\u201D with\u2026"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "x", onClick: () => setWkPairSel(null), children: "\u2715" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-pairlist", children: opts.length ? opts.map(({ e, j }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "wk-pairopt", onClick: () => planPairWith(wkPairSel.split, wkPairSel.ei, j), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: e.name }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+              e.sets.length,
+              " sets \xB7 moves next to it & syncs"
+            ] })
+          ] }, j)) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-pairnone", children: "Everything else is already paired \u2014 unlink something first." }) })
+        ] }) });
+      })(),
       wkPad && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wk-sheet-ov", onClick: () => setWkPad(null), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-sheet", onClick: (e) => e.stopPropagation(), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wk-sheet-hd", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "t", children: (((data.plans || {})[wkPad.split] || [])[wkPad.ei] || {}).name || "Weight" }),
@@ -38690,6 +38844,29 @@ body{margin:0;}
 .wk-note{margin-top:16px; background:rgba(116,179,255,.06); border:1px solid rgba(116,179,255,.2); border-radius:14px; padding:12px 13px; font-size:11.5px; line-height:1.5; color:var(--muted);}
 .wk-note b{color:var(--steel);}
 /* number pad sheet */
+/* ---- supersets (Workouts tab + logger) ---- */
+.wk-sslink{display:block; margin:4px auto; border:1px dashed rgba(116,179,255,.4); background:rgba(116,179,255,.05);
+  color:var(--steel); border-radius:999px; padding:7px 15px; font-size:11px; font-weight:800; letter-spacing:.04em;
+  cursor:pointer; font-family:'Archivo';}
+.wk-sslink.on{border-style:solid; border-color:rgba(116,179,255,.55); background:rgba(116,179,255,.14);}
+.wk-card.ss-a{border-color:rgba(116,179,255,.35); border-bottom-left-radius:6px; border-bottom-right-radius:6px; margin-bottom:0;}
+.wk-card.ss-b{border-color:rgba(116,179,255,.35); border-top-left-radius:6px; border-top-right-radius:6px;}
+.wk-card.ss-a, .wk-card.ss-b{border-left:3px solid rgba(116,179,255,.55);}
+.wk-pairbtn{background:none; border:1px solid rgba(116,179,255,.35); color:var(--steel); width:26px; height:26px;
+  border-radius:8px; font-size:12px; cursor:pointer; flex:0 0 auto; line-height:1;}
+.wk-pairlist{display:flex; flex-direction:column; gap:8px; padding:8px 0 4px; max-height:50vh; overflow-y:auto;}
+.wk-pairopt{display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04); color:var(--chalk); border-radius:12px; padding:12px 14px; cursor:pointer; font-family:'Archivo';}
+.wk-pairopt b{font-size:14px; font-weight:700;}
+.wk-pairopt span{font-size:10.5px; color:var(--muted); font-weight:600;}
+.wk-pairnone{font-size:12px; color:var(--muted); padding:12px 4px;}
+.ws-ssline{margin-top:10px; font-size:10.5px; font-weight:800; letter-spacing:.1em; color:var(--steel);
+  text-transform:uppercase; border:1px solid rgba(116,179,255,.3); background:rgba(116,179,255,.07);
+  border-radius:999px; padding:6px 13px; display:inline-block;}
+.ws-ssline.hot{color:#a8d1ff; border-color:rgba(116,179,255,.7); background:rgba(116,179,255,.16);
+  animation:ssHot .5s cubic-bezier(.2,1,.3,1) both, ssGlowP 1.6s ease-in-out .5s infinite;}
+@keyframes ssHot{from{opacity:0; transform:translateY(8px) scale(.94);}to{opacity:1; transform:none;}}
+@keyframes ssGlowP{0%,100%{box-shadow:0 0 0 rgba(116,179,255,0);}50%{box-shadow:0 0 16px rgba(116,179,255,.45);}}
 .wk-sheet-ov{position:fixed; inset:0; z-index:50; background:rgba(8,9,12,.6); backdrop-filter:blur(3px); display:flex; align-items:flex-end; justify-content:center; animation:fovFade .2s ease;}
 .wk-sheet{width:100%; max-width:440px; background:linear-gradient(180deg,#1b1f27,#141821); border:1px solid rgba(255,255,255,.09); border-bottom:none; border-radius:22px 22px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); box-shadow:0 -18px 50px rgba(0,0,0,.5);}
 .wk-sheet-hd{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
