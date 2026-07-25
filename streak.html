@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.24-ss.1";
+  var APP_VERSION = "v2026.07.25-core.4";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -31412,7 +31412,7 @@
     { name: "Finisher Plank", type: "hold", base: 25, step: 5, cap: 90 }
   ];
   var ABS_REST_S = 15;
-  var absTarget = (m, level) => Math.min(m.cap, m.base + m.step * Math.max(0, (level || 1) - 1));
+  var absTarget = (m, steps) => Math.min(m.cap, m.base + m.step * Math.max(0, steps || 0));
   var REST_OPTS = [45, 60, 90, 120, 180];
   var REST_EX_OPTS = [90, 120, 150, 180, 240];
   var SIDE_DAY_XP = 2;
@@ -31739,7 +31739,9 @@
     abs: {},
     // "YYYY-MM-DD": one guided core circuit per day
     absLevel: 1,
-    // Core Circuit level — climbs one notch per completed session
+    // Core Circuit badge — counts completed sessions
+    absLv: {},
+    // per-move growth steps — each completion grows the 3 furthest behind
     trialDays: {},
     // "YYYY-MM-DD": target id — boss trials survived
     trueForms: {},
@@ -31997,6 +31999,7 @@
     for (const k2 of Object.keys(defaultPlanNames())) if (!m.planNames[k2]) m.planNames[k2] = k2;
     if (m.unit !== "kg" && m.unit !== "lb") m.unit = "kg";
     if (!(m.absLevel >= 1)) m.absLevel = 1;
+    if (!m.absLv || typeof m.absLv !== "object") m.absLv = {};
     for (const k2 of Object.keys(m.plans || {})) {
       for (const ex of m.plans[k2] || []) {
         const blocks = toBlocks(ex.sets || []);
@@ -34179,6 +34182,7 @@
     const [wkSplit, setWkSplit] = (0, import_react41.useState)("PUSH");
     const [wkPad, setWkPad] = (0, import_react41.useState)(null);
     const [wkPairSel, setWkPairSel] = (0, import_react41.useState)(null);
+    const [absFails, setAbsFails] = (0, import_react41.useState)({});
     const [wkPadStr, setWkPadStr] = (0, import_react41.useState)("");
     const [wkPadFresh, setWkPadFresh] = (0, import_react41.useState)(false);
     const [wkEdit, setWkEdit] = (0, import_react41.useState)(null);
@@ -35216,7 +35220,10 @@
       });
       celebrate(`Stretched 15 min \u2713 +${STRETCH_XP} XP \u{1F9D8}`, "small");
     };
+    const absSteps = (m) => data.absLv && data.absLv[m.name] != null ? data.absLv[m.name] : Math.max(0, (data.absLevel || 1) - 1);
+    const absTargetOf = (m) => absTarget(m, absSteps(m));
     const startAbs = () => {
+      setAbsFails({});
       setAbsTimer({ phase: "ready", i: -1, end: Date.now() + 5e3 });
       setNow(Date.now());
     };
@@ -35227,7 +35234,7 @@
         return;
       }
       if (m.type === "hold") {
-        setAbsTimer({ phase: "move", i: idx, side: 1, end: Date.now() + absTarget(m, data.absLevel) * 1e3 });
+        setAbsTimer({ phase: "move", i: idx, side: 1, end: Date.now() + absTargetOf(m) * 1e3 });
       } else {
         setAbsTimer({ phase: "move", i: idx });
       }
@@ -35250,19 +35257,48 @@
           setAbsTimer({ phase: "flip", i: absTimer.i, end: Date.now() + 5e3 });
         else absAfterMove(absTimer.i);
       } else if (absTimer.phase === "flip")
-        setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTarget(ABS_CIRCUIT[absTimer.i], data.absLevel) * 1e3 });
+        setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTargetOf(ABS_CIRCUIT[absTimer.i]) * 1e3 });
       else if (absTimer.phase === "rest") absGoMove(absTimer.i + 1);
+    };
+    const absFail = () => {
+      if (!absTimer || absTimer.i == null || absTimer.i < 0) return;
+      setAbsFails((f) => ({ ...f, [absTimer.i]: true }));
+      flash("Logged \u2014 next one \u2717");
+      absAfterMove(absTimer.i);
     };
     const finishAbs = () => {
       const fromLevel = data.absLevel || 1;
+      const fails = absFails || {};
+      const before = {};
+      ABS_CIRCUIT.forEach((m) => {
+        before[m.name] = absSteps(m);
+      });
+      const lv = {};
+      ABS_CIRCUIT.forEach((m, k2) => {
+        lv[m.name] = fails[k2] ? Math.max(0, before[m.name] - 1) : before[m.name];
+      });
+      const eligible = ABS_CIRCUIT.map((m, k2) => ({ m, k: k2 })).filter(({ m, k: k2 }) => !fails[k2] && absTarget(m, lv[m.name] + 1) > absTarget(m, lv[m.name])).sort((a2, b) => lv[a2.m.name] - lv[b.m.name] || a2.k - b.k).slice(0, 3);
+      eligible.forEach(({ m }) => {
+        lv[m.name] = lv[m.name] + 1;
+      });
+      const grew = new Set(eligible.map(({ k: k2 }) => k2));
+      const changes = ABS_CIRCUIT.map((m, k2) => ({
+        name: m.name,
+        hold: m.type === "hold",
+        kind: fails[k2] ? "down" : grew.has(k2) ? "up" : absTarget(m, lv[m.name] + 1) <= absTarget(m, lv[m.name]) ? "max" : "hold",
+        from: absTarget(m, before[m.name]),
+        to: absTarget(m, lv[m.name])
+      }));
+      const nf = Object.keys(fails).length;
       setData((prev) => {
         const next = clone(prev);
+        next.absLv = { ...prev.absLv || {}, ...lv };
         next.absLevel = (prev.absLevel || 1) + 1;
-        next.abs = { ...prev.abs || {}, [todayStr]: `core L${prev.absLevel || 1}` };
+        next.abs = { ...prev.abs || {}, [todayStr]: `core L${prev.absLevel || 1}${nf ? ` \xB7 ${nf}\u2717` : ""}` };
         persist(next);
         return next;
       });
-      setAbsTimer({ phase: "done", fromLevel });
+      setAbsTimer({ phase: "done", fromLevel, changes, nf });
       celebrate(`Core circuit done \u2713 +${ABS_XP} XP`, "small");
       setNow(Date.now());
     };
@@ -36803,35 +36839,40 @@
                     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-xp", children: [
                       "+",
                       ABS_XP,
-                      " XP \xB7 circuit survived"
+                      " XP \xB7 circuit survived",
+                      absTimer.nf ? ` \xB7 ${absTimer.nf} missed` : ""
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-lvup", children: "The circuit levels up" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-lvup", children: "The circuit adapts" }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-lvsub", children: [
                       "Level ",
                       from,
                       " \u2192 ",
                       from + 1,
-                      " \xB7 next session's targets"
+                      " \xB7 three grow, the rest hold"
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-scaleList", children: ABS_CIRCUIT.map((mm, k2) => {
-                      const a2 = absTarget(mm, from), b = absTarget(mm, from + 1);
-                      const hold = mm.type === "hold", maxed = b <= a2;
-                      const pre = hold ? "" : "\xD7", u = hold ? "s" : "";
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-scaleList", children: (absTimer.changes || []).map((c2, k2) => {
+                      const pre = c2.hold ? "" : "\xD7", u = c2.hold ? "s" : "";
                       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-srow", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "n", children: mm.name }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "n", children: c2.name }),
                         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "prog", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "old", children: [
+                          c2.kind === "up" || c2.kind === "down" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "old", children: [
+                              pre,
+                              c2.from,
+                              u
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "arw", children: "\u2192" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `new ${c2.hold ? "hold" : ""} ${c2.kind === "down" ? "dn" : ""}`, children: [
+                              pre,
+                              c2.to,
+                              u
+                            ] })
+                          ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `new ${c2.hold ? "hold" : ""}`, children: [
                             pre,
-                            a2,
+                            c2.to,
                             u
                           ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "arw", children: "\u2192" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `new ${hold ? "hold" : ""}`, children: [
-                            pre,
-                            b,
-                            u
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `delta ${maxed ? "cap" : ""}`, children: maxed ? "max" : `+${mm.step}${u}` })
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `delta ${c2.kind === "max" ? "cap" : c2.kind === "hold" ? "keep" : c2.kind === "down" ? "down" : ""}`, children: c2.kind === "up" ? `\u25B2 +${c2.to - c2.from}${u}` : c2.kind === "down" ? "\u25BC eased" : c2.kind === "max" ? "max" : "holds" })
                         ] })
                       ] }, k2);
                     }) })
@@ -36853,20 +36894,21 @@
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-mvname", children: m.name }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-mvper", children: m.per || "\xA0" }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-repbig", children: [
-                      absTarget(m, lvl2),
+                      absTargetOf(m),
                       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "REPS" })
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-selfp", children: "go at your own pace" })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-ctl abs-ctl-col", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "abs-done-btn", onClick: absNext, children: "DONE \u2713" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "abs-fail", onClick: absFail, children: "\u2717 couldn't finish" }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "link", onClick: () => setAbsTimer(null), children: "stop" })
                   ] })
                 ] });
               }
               const igniting = phase === "ready", holding = phase === "move", flipping = phase === "flip";
               const left = Math.max(0, Math.ceil((absTimer.end - now) / 1e3));
-              const seg = igniting || flipping ? 5 : holding ? absTarget(m, lvl2) : ABS_REST_S;
+              const seg = igniting || flipping ? 5 : holding ? absTargetOf(m) : ABS_REST_S;
               const pct = Math.min(1, Math.max(0, 1 - left / seg));
               const urgent = holding && left <= 5;
               const col = igniting || holding ? "var(--ember)" : "var(--steel)";
@@ -36918,11 +36960,12 @@
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
                     nextM.name,
                     " ",
-                    nextM.type === "hold" ? `${absTarget(nextM, lvl2)}s` : `\xD7 ${absTarget(nextM, lvl2)}`
+                    nextM.type === "hold" ? `${absTargetOf(nextM)}s` : `\xD7 ${absTargetOf(nextM)}`
                   ] })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-ctl", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "chip sw-next", onClick: absNext, children: holding ? "SKIP \u203A" : "GO \u203A" }),
+                  holding && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "chip abs-failchip", onClick: absFail, children: "\u2717 dropped" }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "link", onClick: () => setAbsTimer(null), children: "stop" })
                 ] })
               ] });
@@ -39777,6 +39820,13 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .abs-srow .new.hold{color:var(--steel);}
 .abs-srow .delta{font-family:'Archivo'; font-size:10px; font-weight:800; color:#7CD08A; background:rgba(88,179,104,.12); border-radius:999px; padding:2px 6px;}
 .abs-srow .delta.cap{color:var(--muted); background:rgba(255,255,255,.05);}
+.abs-srow .delta.keep{color:var(--muted); background:rgba(255,255,255,.05);}
+.abs-srow .delta.down{color:#ff9f8a; background:rgba(224,101,79,.14);}
+.abs-srow .new.dn{color:#ff9f8a;}
+.abs-fail{width:100%; border:1px solid rgba(224,101,79,.4); background:rgba(224,101,79,.08); color:#ff9f8a;
+  border-radius:14px; padding:13px; font-family:'Archivo'; font-weight:800; font-size:13px; letter-spacing:.03em; cursor:pointer;}
+.abs-fail:active{background:rgba(224,101,79,.18);}
+.abs-failchip{border-color:rgba(224,101,79,.5) !important; color:#ff9f8a !important;}
 .focus-ov{position:fixed; inset:0; z-index:60; background:rgba(10,11,14,.95); display:flex; align-items:center; justify-content:center; padding:18px; animation:fovFade .3s ease;}
 @keyframes fovFade{from{background:rgba(10,11,14,0); backdrop-filter:blur(0);}to{background:rgba(10,11,14,.95);}}
 .focus-ov .card{animation:fovPop .45s cubic-bezier(.2,1.4,.35,1);}
