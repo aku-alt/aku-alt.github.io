@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.25-core.4";
+  var APP_VERSION = "v2026.07.27-hint.1";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -32525,8 +32525,7 @@
     const prog = curEx && progFor ? progFor(curEx.name) : null;
     let suggestKg = null;
     if (prog && si === 0 && cur) {
-      if (prog.state === "advance" && prog.kg > cur.kg) suggestKg = prog.kg;
-      else if (prog.state === "deload" && prog.kg < cur.kg) suggestKg = prog.kg;
+      if (prog.state === "deload" && prog.kg < cur.kg) suggestKg = prog.kg;
     }
     const baseKg = suggestKg != null ? suggestKg : cur ? cur.kg : 0;
     const dispV = edit && edit.key === editKey ? edit.v : toUnit(baseKg, unit2);
@@ -32828,7 +32827,7 @@
           })(),
           prog && si === 0 && prog.state !== "new" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `ws-prog ${prog.state}`, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-ic", children: prog.state === "advance" ? "\u25B2" : prog.state === "deload" ? "\u26A0" : "\u2192" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-msg", children: prog.msg })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-msg", children: prog.state === "advance" ? "Add a bit more today \u2014 you owned every set last time." : prog.msg })
           ] })
         ] }) : null }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-foot", children: resting && pendingChoose ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -36402,60 +36401,262 @@
                 if ((data.abs || {})[ds]) abN += 1;
               }
             }
-            const rows = [
-              ["WARS FOUGHT", `${prevWeekRec.gym}/${prevWeekRec.qg} GYM \xB7 ${prevWeekRec.cardio}/${prevWeekRec.qc} CARDIO`, "var(--chalk)"],
-              ["IRON MOVED", tonStr, "var(--ember)"],
-              ["VS LAST WEEK", dPct === null ? "FIRST BLOOD" : `${dPct > 0 ? "+" : ""}${dPct}%`, dPct === null ? "var(--muted)" : dPct >= 0 ? "#58B368" : "var(--red)"],
-              ["SIDE DEEDS", `${stN}\xD7 STRETCH \xB7 ${abN}\xD7 ABS`, "sidedeeds"],
-              ["PLUNDER", `+${recap.xp} XP`, "var(--gold)"],
-              ["THE ROAD", `${recap.walk} KM WALKED`, "var(--steel)"]
-            ];
-            const stamp = prevWeekRec.perfect ? "PERFECT WEEK \u2726" : prevWeekRec.met ? "WEEK HELD \u{1F6E1}\uFE0F" : "WEEK LOST";
+            const dayBefore = fmt(addDays(parse(recap.rws), -1));
+            const topIn = (nameLc, from, to) => {
+              let best = 0;
+              for (const d of Object.keys(data.logs)) {
+                if (d < from || d > to) continue;
+                const ex = (data.logs[d].exercises || []).find((e) => !e.skipped && e.name.toLowerCase() === nameLc);
+                if (!ex || (ex.sets || []).some((s2) => s2.rest != null)) continue;
+                for (const s2 of ex.sets) if (s2.done && s2.reps > 0 && s2.reps <= 100 && s2.kg > best) best = s2.kg;
+              }
+              return best;
+            };
+            const liftNames = {};
+            {
+              const st0 = parse(recap.rws);
+              for (let j = 0; j < 7; j++) {
+                const ds = fmt(addDays(st0, j));
+                for (const ex of (data.logs[ds] || {}).exercises || []) {
+                  if (ex.skipped || (ex.sets || []).some((s2) => s2.rest != null)) continue;
+                  if ((ex.sets || []).some((s2) => s2.done)) liftNames[ex.name.toLowerCase()] = ex.name;
+                }
+              }
+            }
+            let forged = [];
+            for (const lc of Object.keys(liftNames)) {
+              const wk = topIn(lc, recap.rws, recap.rwe);
+              const prev = topIn(lc, "0000-01-01", dayBefore);
+              if (prev > 0 && wk > prev) forged.push({ name: liftNames[lc], from: prev, to: wk });
+            }
+            forged.sort((a2, b) => b.to - b.from - (a2.to - a2.from));
+            const forgedExtra = Math.max(0, forged.length - 4);
+            forged = forged.slice(0, 4);
+            let coreClimb = null;
+            {
+              const ls = [];
+              const st0 = parse(recap.rws);
+              for (let j = 0; j < 7; j++) {
+                const mmm = /core L(\d+)/.exec((data.abs || {})[fmt(addDays(st0, j))] || "");
+                if (mmm) ls.push(parseInt(mmm[1], 10));
+              }
+              if (ls.length) coreClimb = { from: Math.min(...ls), to: Math.max(...ls) + 1, runs: ls.length };
+            }
+            const readyAsOf = (t, cutoff) => {
+              const req = EPLEY(t.kg, t.reps);
+              const needle = stripLift(t.name);
+              let cur = 0;
+              for (const d of Object.keys(data.logs)) {
+                if (d > cutoff) continue;
+                for (const ex of data.logs[d].exercises || []) {
+                  if (stripLift(ex.name) !== needle) continue;
+                  for (const s2 of ex.sets) {
+                    const e22 = EPLEY(s2.kg, s2.reps);
+                    if (e22 > cur) cur = e22;
+                  }
+                }
+              }
+              return req > 0 ? Math.min(100, Math.round(cur / req * 100)) : 0;
+            };
+            const disp = [];
+            for (const [d] of Object.entries(data.trialDays || {}))
+              if (d >= recap.rws && d <= recap.rwe) disp.push(["\u2692\uFE0F", /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                "A den was entered \u2014 and survived. ",
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+                  "+",
+                  TRIAL_XP,
+                  " XP"
+                ] })
+              ] })]);
+            for (const t of stats.side.targets) {
+              if (t.gateBroken && t.gateBroken >= recap.rws && t.gateBroken <= recap.rwe)
+                disp.push(["\u2691", /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                  "A gate fell before you. ",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+                    "+",
+                    GATE_XP,
+                    " XP"
+                  ] })
+                ] })]);
+              if (t.achievedDate && t.achievedDate >= recap.rws && t.achievedDate <= recap.rwe)
+                disp.push(["\u{1F409}", /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                  /deadlift/i.test(t.name) ? "The Wyrm" : "The Sky-Dragon",
+                  " was ",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: "slain" }),
+                  "."
+                ] })]);
+            }
+            for (const [d] of Object.entries(data.trueForms || {}))
+              if (d >= recap.rws && d <= recap.rwe) disp.push(["\u{1F311}", /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                "A ",
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: "true form" }),
+                " woke \u2014 and was felled."
+              ] })]);
+            if ((data.jester || {}).last && data.jester.last >= recap.rws && data.jester.last <= recap.rwe)
+              disp.push(["\u{1F0CF}", /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: "The jester pitched his tent that week." })]);
+            const stamp = prevWeekRec.perfect ? "PERFECT WEEK" : prevWeekRec.met ? "WEEK HELD" : "WEEK LOST";
+            const stampEm = prevWeekRec.perfect ? "\u2726" : prevWeekRec.met ? "\u{1F6E1}\uFE0F" : "\u2716";
             const stampCol = prevWeekRec.perfect ? "var(--gold)" : prevWeekRec.met ? "#58B368" : "var(--red)";
+            const streakline = prevWeekRec.met ? `${stats.weekStreak} week${stats.weekStreak === 1 ? "" : "s"} unbroken \xB7 ${data.shields || 0} shield${(data.shields || 0) === 1 ? "" : "s"}` : "the chain snapped \u2014 forge a new one";
+            const Rule = ({ t, d }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-rule wr2-a", style: { animationDelay: `${d}s` }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", {}),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: t }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", {})
+            ] });
             return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-ov", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-kicker", children: [
-                "WEEK OF ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-kicker wr2-a", style: { animationDelay: ".05s" }, children: [
+                "\u2694 WEEK OF ",
                 monthDay(recap.rws).toUpperCase(),
                 " \u2013 ",
-                monthDay(recap.rwe).toUpperCase()
+                monthDay(recap.rwe).toUpperCase(),
+                " \u2694"
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-title", children: [
-                "THE WAR",
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "REPORT" })
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-verdict wr2-a", style: { animationDelay: ".15s" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-stamp", style: { color: stampCol, textShadow: `0 0 30px ${stampCol}55` }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "em", children: stampEm }),
+                  " ",
+                  stamp
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr2-streak", style: { color: prevWeekRec.met ? "var(--gold)" : "var(--muted)" }, children: streakline })
               ] }),
-              rows.map(([k2, v, col], i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-row", style: { animationDelay: `${0.15 + i * 0.12}s` }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wr-k", children: k2 }),
-                col === "sidedeeds" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wr-v", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { color: "#58B368" }, children: [
-                    stN,
-                    "\xD7 STRETCH"
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Rule, { t: "The tally", d: 0.3 }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-tiles wr2-a", style: { animationDelay: ".4s" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-tile", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Wars fought" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", style: { color: prevWeekRec.met ? "#58B368" : "var(--red)" }, children: [
+                    prevWeekRec.gym,
+                    "/",
+                    prevWeekRec.qg,
+                    " ",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("small", { children: [
+                      "\xB7 ",
+                      prevWeekRec.cardio,
+                      "/",
+                      prevWeekRec.qc
+                    ] })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "var(--muted)" }, children: " \xB7 " }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { color: "#A78BFA" }, children: [
-                    abN,
-                    "\xD7 ABS"
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "d mut", children: "gym \xB7 cardio" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-tile", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Iron moved" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "v", style: { color: "var(--ember)" }, children: tonStr }),
+                  dPct === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "d mut", children: "first blood" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `d ${dPct >= 0 ? "up" : "dn"}`, children: [
+                    dPct >= 0 ? "\u25B2" : "\u25BC",
+                    " ",
+                    dPct > 0 ? "+" : "",
+                    dPct,
+                    "% vs last week"
                   ] })
-                ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wr-v", style: { color: col }, children: v })
-              ] }, k2)),
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-tile", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "l", children: "Plunder" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "v", style: { color: "var(--gold)" }, children: [
+                    "+",
+                    recap.xp,
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: " XP" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "d mut", children: [
+                    "LV ",
+                    lvl.index,
+                    " \xB7 ",
+                    lvl.title
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Rule, { t: "Forged this week", d: 0.55 }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-forge", children: [
+                forged.length === 0 && !coreClimb && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr2-noforge wr2-a", style: { animationDelay: ".65s" }, children: "No blades sharpened \u2014 the iron waits." }),
+                forged.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-frow wr2-a", style: { animationDelay: `${0.65 + i * 0.1}s` }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ic", children: "\u25B2" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "n", children: f.name }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "w", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "old", children: wShow(f.from, data.unit) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "arw", children: "\u2192" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "new", children: wShow(f.to, data.unit) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("u", { children: ULU })
+                  ] })
+                ] }, f.name)),
+                forgedExtra > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-more wr2-a", style: { animationDelay: "1s" }, children: [
+                  "\u2026and ",
+                  forgedExtra,
+                  " more"
+                ] }),
+                coreClimb && coreClimb.to > coreClimb.from && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-frow core wr2-a", style: { animationDelay: `${0.65 + forged.length * 0.1}s` }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ic", children: "\u25C6" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "n", children: [
+                    "The Core Circuit",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("small", { children: [
+                      coreClimb.runs,
+                      " run",
+                      coreClimb.runs === 1 ? "" : "s",
+                      " survived"
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "w", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "old", children: [
+                      "LV ",
+                      coreClimb.from
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "arw", children: "\u2192" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "new", children: [
+                      "LV ",
+                      coreClimb.to
+                    ] })
+                  ] })
+                ] })
+              ] }),
+              (stN > 0 || abN > 0 || recap.walk > 0) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Rule, { t: "Deeds", d: 0.95 }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-deeds wr2-a", style: { animationDelay: "1.05s" }, children: [
+                  recap.walk > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wr2-deed", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { style: { color: "var(--steel)" }, children: [
+                      recap.walk,
+                      " KM"
+                    ] }),
+                    " the road"
+                  ] }),
+                  abN > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wr2-deed", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { style: { color: "#A78BFA" }, children: [
+                      abN,
+                      "\xD7"
+                    ] }),
+                    " core"
+                  ] }),
+                  stN > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wr2-deed", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { style: { color: "#58B368" }, children: [
+                      stN,
+                      "\xD7"
+                    ] }),
+                    " stretch"
+                  ] })
+                ] })
+              ] }),
               stats.side.targets.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr-hunt-head", children: "THE HUNT" }),
-                stats.side.targets.slice(0, 2).map((t, i) => {
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Rule, { t: "The hunt", d: 1.15 }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr2-hunt", children: stats.side.targets.slice(0, 2).map((t, i) => {
                   const isDL = /deadlift/i.test(t.name);
-                  const r2 = bossReadiness(t);
                   const col = isDL ? "var(--ember)" : "var(--steel)";
-                  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-boss", style: { animationDelay: `${0.85 + i * 0.15}s` }, children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wr-boss-face", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BossFace, { img: isDL ? "wyrm.png" : "sky-dragon.png", emoji: isDL ? "\u{1F409}" : "\u{1F432}", size: 46 }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-boss-body", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-boss-top", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "wr-boss-name", style: { color: col }, children: isDL ? "THE WYRM" : "THE SKY-DRAGON" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "wr-boss-pct", style: { color: col }, children: [
-                          r2.pct,
-                          "%"
+                  const pEnd = readyAsOf(t, recap.rwe);
+                  const gained = pEnd - readyAsOf(t, dayBefore);
+                  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr2-boss wr2-a", style: { animationDelay: `${1.25 + i * 0.1}s` }, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "face", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BossFace, { img: isDL ? "wyrm.png" : "sky-dragon.png", emoji: isDL ? "\u{1F409}" : "\u{1F432}", size: 34 }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "body", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "top", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "nm", style: { color: col }, children: isDL ? "THE WYRM" : "THE SKY-DRAGON" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pcts", children: [
+                          gained > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "dlt", children: [
+                            "\u25B2 +",
+                            gained,
+                            " that week"
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "pct", style: { color: col }, children: [
+                            pEnd,
+                            "%"
+                          ] })
                         ] })
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr-boss-track", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { "--w": `${r2.pct}%`, background: `linear-gradient(90deg, #B4501E, ${col})`, boxShadow: `0 0 8px ${col}`, animationDelay: `${1 + i * 0.2}s` } }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "wr-boss-sub", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "track", style: { background: isDL ? "rgba(232,93,38,.16)" : "rgba(116,179,255,.14)" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${pEnd}%`, background: `linear-gradient(90deg, ${isDL ? "#B4501E" : "#3d6ea8"}, ${col})`, boxShadow: `0 0 8px ${col}` } }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sub", children: [
                         t.name,
                         " ",
                         wDisp(t.kg),
@@ -36467,10 +36668,16 @@
                       ] })
                     ] })
                   ] }, t.id);
-                })
+                }) })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr-stamp", style: { color: stampCol, borderColor: stampCol, textShadow: `0 0 20px ${stampCol}` }, children: stamp }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wr-btn", onClick: () => dismissRecap(recap.rws), children: "ONWARD" })
+              disp.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Rule, { t: "Dispatches", d: 1.45 }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "wr2-disp wr2-a", style: { animationDelay: "1.55s" }, children: disp.slice(0, 4).map(([em, node], i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "row", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "em", children: em }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: node })
+                ] }, i)) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "wr2-onward wr2-a", style: { animationDelay: "1.65s" }, onClick: () => dismissRecap(recap.rws), children: "ONWARD \u203A" })
             ] });
           })(),
           selDay && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", { className: `card day-card ${!dayStarted ? "warfront" : ""} ${fight && fightTarget ? `ft-${fightTheme(fightTarget).cls} ft-${fight.kind}` : ""}`, children: !dayStarted ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -39708,7 +39915,61 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .day-card .alt-row, .day-card .pill-row{margin-top:6px; gap:6px;}
 .day-card .alt-row .chip, .day-card .pill-row .chip{padding:5px 10px; font-size:11px;}
 .day-card .start-wrap{margin-top:0;}
-.wr-ov{position:fixed; inset:0; z-index:70; background:#0A0B0E; display:flex; flex-direction:column; padding:calc(env(safe-area-inset-top, 0px) + 46px) 24px calc(env(safe-area-inset-bottom, 0px) + 30px); overflow-y:auto; animation:fovFade .3s ease;}
+.wr-ov{position:fixed; inset:0; z-index:70; display:flex; flex-direction:column; padding:calc(env(safe-area-inset-top, 0px) + 40px) 20px calc(env(safe-area-inset-bottom, 0px) + 30px); overflow-y:auto; animation:fovFade .3s ease;
+  background:radial-gradient(120% 42% at 50% 0%, rgba(232,93,38,.13), transparent 60%), linear-gradient(180deg, #14161c, #0A0B0E 60%);}
+/* ---- war report v2 ---- */
+@keyframes wr2rise{from{opacity:0; transform:translateY(14px);}to{opacity:1; transform:none;}}
+.wr2-a{opacity:0; animation:wr2rise .5s cubic-bezier(.2,1,.3,1) both;}
+.wr2-kicker{text-align:center; font-family:'Cinzel'; font-size:10px; letter-spacing:.3em; color:var(--muted); margin-bottom:14px;}
+.wr2-verdict{text-align:center; margin-bottom:4px;}
+.wr2-stamp{font-family:'Anton'; font-weight:400; font-size:37px; letter-spacing:.05em; line-height:1;}
+.wr2-stamp .em{font-size:27px; vertical-align:5px;}
+.wr2-streak{font-family:'Cinzel'; font-size:11px; letter-spacing:.16em; margin-top:9px; text-transform:uppercase;}
+.wr2-rule{display:flex; align-items:center; gap:10px; margin:17px 0 12px;}
+.wr2-rule i{flex:1; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);}
+.wr2-rule span{font-family:'Cinzel'; font-size:9.5px; letter-spacing:.26em; color:var(--muted); text-transform:uppercase; white-space:nowrap;}
+.wr2-tiles{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+.wr2-tile{background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:11px 8px 10px; text-align:center;}
+.wr2-tile .l{font-size:8.5px; font-weight:800; letter-spacing:.09em; color:var(--muted); text-transform:uppercase; margin-bottom:6px;}
+.wr2-tile .v{font-family:'Anton'; font-weight:400; font-size:20px; line-height:1;}
+.wr2-tile .v small{font-size:11px; color:var(--muted); font-family:'Archivo'; font-weight:700;}
+.wr2-tile .d{margin-top:6px; font-size:9.5px; font-weight:800; line-height:1.3;}
+.wr2-tile .d.up{color:#58B368;} .wr2-tile .d.dn{color:var(--red);} .wr2-tile .d.mut{color:var(--muted); font-weight:600;}
+.wr2-forge{display:flex; flex-direction:column; gap:8px;}
+.wr2-frow{display:flex; align-items:center; gap:11px; background:rgba(88,179,104,.05); border:1px solid rgba(88,179,104,.22); border-radius:13px; padding:10px 13px;}
+.wr2-frow .ic{flex:0 0 auto; width:25px; height:25px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:rgba(88,179,104,.14); color:#58B368; font-size:12px; font-weight:800;}
+.wr2-frow .n{flex:1; min-width:0; font-weight:700; font-size:13px; line-height:1.2;}
+.wr2-frow .n small{display:block; font-size:9.5px; color:var(--muted); font-weight:600; margin-top:1px;}
+.wr2-frow .w{font-family:'Anton'; font-weight:400; font-size:15px; display:flex; align-items:baseline; gap:5px; white-space:nowrap;}
+.wr2-frow .w .old{color:var(--muted); font-size:12.5px;}
+.wr2-frow .w .arw{color:var(--muted); font-size:10px; font-family:'Archivo';}
+.wr2-frow .w .new{color:var(--gold);}
+.wr2-frow .w u{text-decoration:none; font-family:'Archivo'; font-size:8.5px; color:var(--muted); font-weight:700;}
+.wr2-frow.core{background:rgba(255,138,60,.05); border-color:rgba(255,138,60,.22);}
+.wr2-frow.core .ic{background:rgba(255,138,60,.14); color:var(--ember);}
+.wr2-frow.core .w .new{color:var(--ember);}
+.wr2-noforge{font-family:'Cinzel'; font-style:italic; font-size:12px; color:var(--muted); text-align:center; padding:6px 0;}
+.wr2-more{font-size:10.5px; color:var(--muted); font-weight:700; text-align:center;}
+.wr2-deeds{display:flex; gap:7px; flex-wrap:wrap;}
+.wr2-deed{display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(255,255,255,.11); background:rgba(255,255,255,.04); border-radius:999px; padding:7px 12px; font-size:11.5px; font-weight:700;}
+.wr2-deed b{font-family:'Anton'; font-weight:400; letter-spacing:.02em;}
+.wr2-hunt{display:flex; flex-direction:column; gap:11px;}
+.wr2-boss{display:flex; gap:11px; align-items:center;}
+.wr2-boss .face{flex:0 0 auto; display:flex;}
+.wr2-boss .body{flex:1; min-width:0;}
+.wr2-boss .top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;}
+.wr2-boss .nm{font-family:'Cinzel'; font-weight:700; font-size:11.5px; letter-spacing:.1em;}
+.wr2-boss .pcts{display:flex; align-items:baseline; gap:7px;}
+.wr2-boss .pct{font-family:'Anton'; font-size:15px;}
+.wr2-boss .dlt{font-size:9.5px; font-weight:800; color:#58B368;}
+.wr2-boss .track{height:8px; border-radius:5px; overflow:hidden;}
+.wr2-boss .track i{display:block; height:100%; border-radius:5px;}
+.wr2-boss .sub{font-size:9px; color:var(--muted); font-weight:600; margin-top:4px; letter-spacing:.04em;}
+.wr2-disp{display:flex; flex-direction:column; gap:7px;}
+.wr2-disp .row{display:flex; align-items:center; gap:10px; font-size:12px; color:#d9d4c8; font-family:'Cinzel'; font-style:italic; line-height:1.4;}
+.wr2-disp .row b{color:var(--gold); font-style:normal;}
+.wr2-disp .row .em{font-size:14px; font-style:normal; flex:0 0 auto;}
+.wr2-onward{display:block; width:100%; margin-top:22px; border:none; border-radius:15px; padding:16px; font-family:'Anton'; letter-spacing:.08em; font-size:16px; background:var(--ember-deep); color:#fff; cursor:pointer; box-shadow:0 10px 30px rgba(232,93,38,.4); flex-shrink:0;}
 .wr-kicker{font-family:'Anton'; font-size:12px; letter-spacing:.26em; color:var(--muted);}
 .wr-title{font-family:'Anton'; font-size:42px; line-height:1.05; margin:6px 0 18px; color:var(--chalk);}
 .wr-title span{color:var(--ember);}
