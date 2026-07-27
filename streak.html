@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.28-retire.1";
+  var APP_VERSION = "v2026.07.28-fix.2";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -34863,11 +34863,16 @@
       setData((prev) => {
         const next = clone(prev);
         const day = { exercises: [], ...next.logs[selDay] || {} };
-        day.exercises = day.exercises.filter((e) => e.sets.some((s2) => s2.done)).map((e) => ({ ...e, sets: [...e.sets] }));
+        day.exercises = day.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
         const plan = next.plans && next.plans[tname] || TEMPLATES[tname] || [];
         for (const t of plan) {
-          if (!day.exercises.some((e) => e.name.toLowerCase() === t.name.toLowerCase()))
+          const existing = day.exercises.find((e) => e.name.toLowerCase() === t.name.toLowerCase());
+          if (!existing) {
             day.exercises.push({ name: t.name, sets: t.sets.map((s2) => ({ ...s2 })), rest: t.rest });
+          } else if (!existing.sets.some((s2) => s2.done)) {
+            existing.sets = t.sets.map((s2) => ({ ...s2 }));
+            existing.rest = t.rest;
+          }
         }
         plan.forEach((t, k2) => {
           if (t.ssNext && plan[k2 + 1]) {
@@ -34879,7 +34884,7 @@
             }
           }
         });
-        day.split = tname;
+        if (!day.split || !day.exercises.some((e) => e.sets.some((s2) => s2.done))) day.split = tname;
         next.logs[selDay] = day;
         const { awarded } = markOn(next, selDay, "gym");
         const label = next.planNames && next.planNames[tname] || tname;
