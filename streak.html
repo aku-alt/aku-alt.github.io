@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.27-hint.1";
+  var APP_VERSION = "v2026.07.28-retire.1";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -31887,22 +31887,29 @@
   }
   function sideStats(data, todayStr) {
     const sb = data.sideBets || {};
+    const ended = data.sideBetsEnded && data.sideBetsEnded < todayStr ? data.sideBetsEnded : todayStr;
     const out = {
-      nic: habitStats(
-        sb.nicotineStart,
-        sb.nicotineUse || {},
-        todayStr,
-        nicLimitAt,
-        NIC_GRACE_DAYS
-      ),
-      alc: habitStats(
-        sb.alcoholStart,
-        sb.alcoholUse || {},
-        todayStr,
-        alcLimitAt,
-        ALC_PLAN.taperDays,
-        ALC_PLAN.bankCap
-      ),
+      nic: {
+        ...habitStats(
+          sb.nicotineStart,
+          sb.nicotineUse || {},
+          ended,
+          nicLimitAt,
+          NIC_GRACE_DAYS
+        ),
+        active: !!sb.nicotineStart && !data.sideBetsEnded
+      },
+      alc: {
+        ...habitStats(
+          sb.alcoholStart,
+          sb.alcoholUse || {},
+          ended,
+          alcLimitAt,
+          ALC_PLAN.taperDays,
+          ALC_PLAN.bankCap
+        ),
+        active: !!sb.alcoholStart && !data.sideBetsEnded
+      },
       targets: [],
       targetsAchieved: 0
     };
@@ -31999,6 +32006,7 @@
     for (const k2 of Object.keys(defaultPlanNames())) if (!m.planNames[k2]) m.planNames[k2] = k2;
     if (m.unit !== "kg" && m.unit !== "lb") m.unit = "kg";
     if (!(m.absLevel >= 1)) m.absLevel = 1;
+    if (!m.sideBetsEnded) m.sideBetsEnded = "2026-07-27";
     if (!m.absLv || typeof m.absLv !== "object") m.absLv = {};
     for (const k2 of Object.keys(m.plans || {})) {
       for (const ex of m.plans[k2] || []) {
@@ -32279,7 +32287,7 @@
       let slips = 0;
       let bank = 0;
       let d = parse(startDs);
-      const end = parse(toStr);
+      const end = parse(data.sideBetsEnded && data.sideBetsEnded < toStr ? data.sideBetsEnded : toStr);
       while (d < end) {
         const ds = fmt(d);
         const base = limitAt(startDs, ds);
@@ -37547,7 +37555,7 @@
               effect.small && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "muted", children: "small sample \u2014 keep checking in" })
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "effect-line muted", children: "Answer a few weekly check-ins to unlock the heartburn comparison." })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "card", children: [
+          !data.sideBetsEnded && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "card", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-head", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "\u{1F3B2} Side bets" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "muted", children: [
