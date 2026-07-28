@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.28-fix.2";
+  var APP_VERSION = "v2026.07.29-evo.8";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -31413,6 +31413,18 @@
   ];
   var ABS_REST_S = 15;
   var absTarget = (m, steps) => Math.min(m.cap, m.base + m.step * Math.max(0, steps || 0));
+  var ABS_EVOLVED = {
+    "Crunches": { name: "V-Ups", type: "rep", base: 8, step: 1, cap: 25 },
+    "Plank": { name: "Long-Lever Plank", type: "hold", base: 20, step: 5, cap: 60 },
+    "Leg Raises": { name: "Leg Raise + Hip Lift", type: "rep", base: 8, step: 1, cap: 20 },
+    "Bicycles": { name: "Windshield Wipers", type: "rep", base: 6, step: 1, cap: 16, per: "each side" },
+    "Russian Twists": { name: "Feet-Up Russian Twists", type: "rep", base: 12, step: 2, cap: 40 },
+    "Reverse Crunches": { name: "Jackknife Sit-Ups", type: "rep", base: 8, step: 1, cap: 22 },
+    "Side Plank": { name: "Side Plank + Leg Raise", type: "hold", base: 12, step: 3, cap: 40, per: "each side" },
+    "Flutter Kicks": { name: "Hollow-Body Flutter", type: "rep", base: 15, step: 3, cap: 40 },
+    "Finisher Plank": { name: "Hollow Hold", type: "hold", base: 20, step: 5, cap: 75 }
+  };
+  var absNotches = (m) => Math.max(1, Math.ceil((m.cap - m.base) / m.step));
   var REST_OPTS = [45, 60, 90, 120, 180];
   var REST_EX_OPTS = [90, 120, 150, 180, 240];
   var SIDE_DAY_XP = 2;
@@ -31742,6 +31754,8 @@
     // Core Circuit badge — counts completed sessions
     absLv: {},
     // per-move growth steps — each completion grows the 3 furthest behind
+    absEvo: {},
+    // per-slot evolution flags — true once the form-II evolution is earned
     trialDays: {},
     // "YYYY-MM-DD": target id — boss trials survived
     trueForms: {},
@@ -32008,6 +32022,7 @@
     if (!(m.absLevel >= 1)) m.absLevel = 1;
     if (!m.sideBetsEnded) m.sideBetsEnded = "2026-07-27";
     if (!m.absLv || typeof m.absLv !== "object") m.absLv = {};
+    if (!m.absEvo || typeof m.absEvo !== "object") m.absEvo = {};
     for (const k2 of Object.keys(m.plans || {})) {
       for (const ex of m.plans[k2] || []) {
         const blocks = toBlocks(ex.sets || []);
@@ -34160,6 +34175,10 @@
       return () => clearInterval(i);
     }, [cardioFlow && cardioFlow.step]);
     const [expandedDay, setExpandedDay] = (0, import_react41.useState)(null);
+    const fightOutcomeRef = (0, import_react41.useRef)(null);
+    (0, import_react41.useEffect)(() => {
+      consumeFightOutcome();
+    }, [data]);
     const [manualSel, setManualSel] = (0, import_react41.useState)(null);
     const [resetArm, setResetArm] = (0, import_react41.useState)(false);
     const [addOpen, setAddOpen] = (0, import_react41.useState)(false);
@@ -34252,12 +34271,12 @@
       beepAndBuzz();
       if (absTimer.phase === "ready") absGoMove(0);
       else if (absTimer.phase === "move") {
-        const m = ABS_CIRCUIT[absTimer.i];
-        if (m && m.type === "hold" && m.per && (absTimer.side || 1) < 2)
+        const f = absForm(ABS_CIRCUIT[absTimer.i]);
+        if (f && f.type === "hold" && f.per && (absTimer.side || 1) < 2)
           setAbsTimer({ phase: "flip", i: absTimer.i, end: Date.now() + 5e3 });
         else absAfterMove(absTimer.i);
       } else if (absTimer.phase === "flip")
-        setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTarget(ABS_CIRCUIT[absTimer.i], data.absLevel) * 1e3 });
+        setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTargetOf(ABS_CIRCUIT[absTimer.i]) * 1e3 });
       else if (absTimer.phase === "rest") absGoMove(absTimer.i + 1);
     }, [now, absTimer]);
     (0, import_react41.useEffect)(() => {
@@ -34717,7 +34736,6 @@
       }
     };
     const finishSession = () => {
-      let summary = null;
       let ambushDebt = null;
       let tentPitch = false;
       if (data.logs[selDay] && data.logs[selDay].startedAt && !data.logs[selDay].durationMin) {
@@ -34740,6 +34758,41 @@
           }
         }
       }
+      let summary = null;
+      const day0 = data.logs[selDay];
+      if (day0 && day0.startedAt) {
+        const exs0 = day0.exercises || [];
+        let sets0 = 0;
+        let vol0 = 0;
+        for (const e of exs0)
+          for (const s2 of countableSets(e)) {
+            sets0 += 1;
+            vol0 += s2.kg * s2.reps;
+          }
+        const gymDays0 = Object.keys(data.completions).filter((d) => data.completions[d].gym && d < selDay).sort();
+        const todayIdx0 = (gymDays0.length + (data.splitShift || 0)) % 3;
+        let lastVol0 = null;
+        for (let k2 = gymDays0.length - 1; k2 >= 0; k2--) {
+          if (k2 % 3 !== todayIdx0) continue;
+          const lg = data.logs[gymDays0[k2]];
+          if (!lg || !(lg.exercises || []).length) continue;
+          let v = 0;
+          for (const e of lg.exercises) for (const s2 of countableSets(e)) v += s2.kg * s2.reps;
+          if (v > 0) {
+            lastVol0 = Math.round(v);
+            break;
+          }
+        }
+        summary = {
+          dur: Math.max(1, Math.round((Date.now() - day0.startedAt) / 6e4)),
+          lifts: exs0.length,
+          sets: sets0,
+          vol: Math.round(vol0),
+          extra: curRec.gym > curRec.qg,
+          split: SPLIT[todayIdx0],
+          lastVol: lastVol0
+        };
+      }
       setData((prev) => {
         const day = prev.logs[selDay];
         if (!day || !day.startedAt) return prev;
@@ -34747,27 +34800,8 @@
         const mins = Math.max(1, Math.round((Date.now() - day.startedAt) / 6e4));
         next.logs[selDay] = { ...day, durationMin: mins };
         const exs = day.exercises || [];
-        let sets = 0;
-        let vol = 0;
-        for (const e of exs)
-          for (const s2 of countableSets(e)) {
-            sets += 1;
-            vol += s2.kg * s2.reps;
-          }
         const gymDays = Object.keys(prev.completions).filter((d) => prev.completions[d].gym && d < selDay).sort();
         const todayIdx = (gymDays.length + (prev.splitShift || 0)) % 3;
-        let lastVol = null;
-        for (let k2 = gymDays.length - 1; k2 >= 0; k2--) {
-          if (k2 % 3 !== todayIdx) continue;
-          const lg = prev.logs[gymDays[k2]];
-          if (!lg || !(lg.exercises || []).length) continue;
-          let v = 0;
-          for (const e of lg.exercises) for (const s2 of countableSets(e)) v += s2.kg * s2.reps;
-          if (v > 0) {
-            lastVol = Math.round(v);
-            break;
-          }
-        }
         const splitKey = day.split || SPLIT[todayIdx];
         if (next.plans && next.plans[splitKey]) {
           const planEx = next.plans[splitKey].map((p) => ({ ...p, sets: p.sets.map((s2) => ({ ...s2 })) }));
@@ -34789,15 +34823,6 @@
           }
           next.plans = { ...next.plans, [splitKey]: planEx };
         }
-        summary = {
-          dur: mins,
-          lifts: exs.length,
-          sets,
-          vol: Math.round(vol),
-          extra: curRec.gym > curRec.qg,
-          split: SPLIT[todayIdx],
-          lastVol
-        };
         if (tentPitch) {
           next.jester = { ...next.jester || {}, last: selDay, stands: selDay };
         }
@@ -35233,7 +35258,9 @@
       celebrate(`Stretched 15 min \u2713 +${STRETCH_XP} XP \u{1F9D8}`, "small");
     };
     const absSteps = (m) => data.absLv && data.absLv[m.name] != null ? data.absLv[m.name] : Math.max(0, (data.absLevel || 1) - 1);
-    const absTargetOf = (m) => absTarget(m, absSteps(m));
+    const absEvolved = (slotName) => !!(data.absEvo || {})[slotName];
+    const absForm = (m) => m && absEvolved(m.name) && ABS_EVOLVED[m.name] ? ABS_EVOLVED[m.name] : m;
+    const absTargetOf = (m) => absTarget(absForm(m), absSteps(m));
     const startAbs = () => {
       setAbsFails({});
       setAbsTimer({ phase: "ready", i: -1, end: Date.now() + 5e3 });
@@ -35245,7 +35272,7 @@
         finishAbs();
         return;
       }
-      if (m.type === "hold") {
+      if (absForm(m).type === "hold") {
         setAbsTimer({ phase: "move", i: idx, side: 1, end: Date.now() + absTargetOf(m) * 1e3 });
       } else {
         setAbsTimer({ phase: "move", i: idx });
@@ -35254,6 +35281,12 @@
     };
     const absAfterMove = (idx) => {
       if (idx + 1 >= ABS_CIRCUIT.length) {
+        const m = ABS_CIRCUIT[idx];
+        if (m && absForm(m).type === "hold" && !(absFails || {})[idx]) {
+          setAbsTimer({ phase: "settle", i: idx });
+          setNow(Date.now());
+          return;
+        }
         finishAbs();
         return;
       }
@@ -35264,13 +35297,14 @@
       if (!absTimer) return;
       if (absTimer.phase === "ready") absGoMove(0);
       else if (absTimer.phase === "move") {
-        const m = ABS_CIRCUIT[absTimer.i];
-        if (m && m.type === "hold" && m.per && (absTimer.side || 1) < 2)
+        const f = absForm(ABS_CIRCUIT[absTimer.i]);
+        if (f && f.type === "hold" && f.per && (absTimer.side || 1) < 2)
           setAbsTimer({ phase: "flip", i: absTimer.i, end: Date.now() + 5e3 });
         else absAfterMove(absTimer.i);
       } else if (absTimer.phase === "flip")
         setAbsTimer({ phase: "move", i: absTimer.i, side: 2, end: Date.now() + absTargetOf(ABS_CIRCUIT[absTimer.i]) * 1e3 });
       else if (absTimer.phase === "rest") absGoMove(absTimer.i + 1);
+      else if (absTimer.phase === "settle") finishAbs();
     };
     const absFail = () => {
       if (!absTimer || absTimer.i == null || absTimer.i < 0) return;
@@ -35278,33 +35312,65 @@
       flash("Logged \u2014 next one \u2717");
       absAfterMove(absTimer.i);
     };
-    const finishAbs = () => {
+    const finishAbs = (failsOverride) => {
       const fromLevel = data.absLevel || 1;
-      const fails = absFails || {};
+      const fails = failsOverride || absFails || {};
+      const evo0 = { ...data.absEvo || {} };
       const before = {};
       ABS_CIRCUIT.forEach((m) => {
         before[m.name] = absSteps(m);
       });
       const lv = {};
+      const evo = { ...evo0 };
+      const devolved = /* @__PURE__ */ new Set();
+      const evolvedNow = /* @__PURE__ */ new Set();
       ABS_CIRCUIT.forEach((m, k2) => {
-        lv[m.name] = fails[k2] ? Math.max(0, before[m.name] - 1) : before[m.name];
+        let s2 = before[m.name];
+        if (fails[k2]) {
+          if (evo0[m.name] && s2 <= 0) {
+            evo[m.name] = false;
+            s2 = absNotches(m);
+            devolved.add(k2);
+          } else s2 = Math.max(0, s2 - 1);
+        }
+        lv[m.name] = s2;
       });
-      const eligible = ABS_CIRCUIT.map((m, k2) => ({ m, k: k2 })).filter(({ m, k: k2 }) => !fails[k2] && absTarget(m, lv[m.name] + 1) > absTarget(m, lv[m.name])).sort((a2, b) => lv[a2.m.name] - lv[b.m.name] || a2.k - b.k).slice(0, 3);
+      ABS_CIRCUIT.forEach((m, k2) => {
+        if (fails[k2] || evo[m.name] || !ABS_EVOLVED[m.name]) return;
+        if (absTarget(m, lv[m.name]) >= m.cap) {
+          evo[m.name] = true;
+          lv[m.name] = 0;
+          evolvedNow.add(k2);
+        }
+      });
+      const formOf = (m) => evo[m.name] && ABS_EVOLVED[m.name] ? ABS_EVOLVED[m.name] : m;
+      const progressOf = (m) => {
+        const f = formOf(m);
+        return (evo[m.name] ? 1 : 0) + Math.min(1, lv[m.name] / absNotches(f));
+      };
+      const eligible = ABS_CIRCUIT.map((m, k2) => ({ m, k: k2 })).filter(({ m, k: k2 }) => !fails[k2] && !evolvedNow.has(k2) && absTarget(formOf(m), lv[m.name] + 1) > absTarget(formOf(m), lv[m.name])).sort((a2, b) => progressOf(a2.m) - progressOf(b.m) || a2.k - b.k).slice(0, 3);
       eligible.forEach(({ m }) => {
         lv[m.name] = lv[m.name] + 1;
       });
       const grew = new Set(eligible.map(({ k: k2 }) => k2));
-      const changes = ABS_CIRCUIT.map((m, k2) => ({
-        name: m.name,
-        hold: m.type === "hold",
-        kind: fails[k2] ? "down" : grew.has(k2) ? "up" : absTarget(m, lv[m.name] + 1) <= absTarget(m, lv[m.name]) ? "max" : "hold",
-        from: absTarget(m, before[m.name]),
-        to: absTarget(m, lv[m.name])
-      }));
+      const changes = ABS_CIRCUIT.map((m, k2) => {
+        const wasF = evo0[m.name] && ABS_EVOLVED[m.name] ? ABS_EVOLVED[m.name] : m;
+        const nowF = formOf(m);
+        return {
+          name: nowF.name,
+          oldName: wasF.name,
+          hold: nowF.type === "hold",
+          oldHold: wasF.type === "hold",
+          kind: evolvedNow.has(k2) ? "evolve" : devolved.has(k2) ? "devolve" : fails[k2] ? "down" : grew.has(k2) ? "up" : absTarget(nowF, lv[m.name] + 1) <= absTarget(nowF, lv[m.name]) ? "max" : "hold",
+          from: absTarget(wasF, before[m.name]),
+          to: absTarget(nowF, lv[m.name])
+        };
+      });
       const nf = Object.keys(fails).length;
       setData((prev) => {
         const next = clone(prev);
         next.absLv = { ...prev.absLv || {}, ...lv };
+        next.absEvo = { ...prev.absEvo || {}, ...evo };
         next.absLevel = (prev.absLevel || 1) + 1;
         next.abs = { ...prev.abs || {}, [todayStr]: `core L${prev.absLevel || 1}${nf ? ` \xB7 ${nf}\u2717` : ""}` };
         persist(next);
@@ -35315,13 +35381,13 @@
       setNow(Date.now());
     };
     const skipExercise = (i) => {
-      let nowSkipped = false;
+      const exNow = ((data.logs[selDay] || {}).exercises || [])[i];
+      const nowSkipped = !(exNow && exNow.skipped);
       setData((prev) => {
         const next = clone(prev);
         const day = next.logs[selDay];
         if (!day || !day.exercises[i]) return prev;
         const exercises = day.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
-        nowSkipped = !exercises[i].skipped;
         exercises[i] = { ...exercises[i], skipped: nowSkipped };
         next.logs[selDay] = { ...day, exercises };
         persist(next);
@@ -35744,16 +35810,55 @@
       });
       markSetDone(i, j);
     };
+    function consumeFightOutcome() {
+      const fo = fightOutcomeRef.current;
+      if (!fo) return false;
+      fightOutcomeRef.current = null;
+      const { slain, gateT, trialT, trueFormWoke, trueFormKilled, resolvedBoss } = fo;
+      if (trueFormWoke) {
+        setRestEnd(null);
+        setReadyAt(null);
+        setNow(Date.now());
+        return true;
+      }
+      if (slain || gateT || trialT || trueFormKilled) {
+        const rows = [];
+        if (gateT) rows.push(["GATE BROKEN", GATE_XP]);
+        if (trialT) rows.push(["TRIAL SURVIVED", TRIAL_XP]);
+        if (slain || resolvedBoss) rows.push(["BOSS SLAIN", TARGET_XP]);
+        if (trueFormKilled) rows.push(["TRUE FORM FELLED", TRUEFORM_XP]);
+        const t = slain || resolvedBoss || gateT || trialT;
+        setBbOutro({
+          target: t,
+          kind: slain || resolvedBoss ? "boss" : gateT ? "gate" : "trial",
+          trueForm: trueFormKilled,
+          rows
+        });
+        if (slain || resolvedBoss) {
+          fanfare(true);
+          burstConfetti(90, true);
+        } else if (gateT)
+          celebrate(
+            `\u2691 GATE BROKEN \u2014 ${gateT.name}! +${GATE_XP}${trueFormKilled ? ` +${TRUEFORM_XP}` : ""} XP`
+          );
+        else if (trialT) celebrate(`\u2692\uFE0F TRIAL SURVIVED \u2014 the den is cleared! +${TRIAL_XP} XP`);
+        setRestEnd(null);
+        setReadyAt(null);
+        setNow(Date.now());
+        return true;
+      }
+      return false;
+    }
     const markSetDone = (i, j) => {
-      let slain = null;
-      let gateT = null;
-      let trialT = null;
-      let trueFormWoke = false;
-      let trueFormKilled = false;
-      let resolvedBoss = null;
       const exSets = ((data.logs[selDay] || {}).exercises || [])[i]?.sets || [];
       const lastOfExercise = !exSets.some((s2, idx) => idx !== j && !s2.done);
       setData((prev) => {
+        let slain = null;
+        let gateT = null;
+        let trialT = null;
+        let trueFormWoke = false;
+        let trueFormKilled = false;
+        let resolvedBoss = null;
         const next = clone(prev);
         const day = next.logs[selDay];
         if (!day || !day.exercises[i]) return prev;
@@ -35837,42 +35942,12 @@
           }
         }
         next.logs[selDay] = { ...day, exercises };
+        fightOutcomeRef.current = slain || gateT || trialT || trueFormWoke || trueFormKilled || resolvedBoss ? { slain, gateT, trialT, trueFormWoke, trueFormKilled, resolvedBoss } : null;
         persist(next);
         return next;
       });
       setManualSel(null);
-      if (trueFormWoke) {
-        setRestEnd(null);
-        setReadyAt(null);
-        setNow(Date.now());
-        return;
-      }
-      if (slain || gateT || trialT || trueFormKilled) {
-        const rows = [];
-        if (gateT) rows.push(["GATE BROKEN", GATE_XP]);
-        if (trialT) rows.push(["TRIAL SURVIVED", TRIAL_XP]);
-        if (slain || resolvedBoss) rows.push(["BOSS SLAIN", TARGET_XP]);
-        if (trueFormKilled) rows.push(["TRUE FORM FELLED", TRUEFORM_XP]);
-        const t = slain || resolvedBoss || gateT || trialT;
-        setBbOutro({
-          target: t,
-          kind: slain || resolvedBoss ? "boss" : gateT ? "gate" : "trial",
-          trueForm: trueFormKilled,
-          rows
-        });
-        if (slain || resolvedBoss) {
-          fanfare(true);
-          burstConfetti(90, true);
-        } else if (gateT)
-          celebrate(
-            `\u2691 GATE BROKEN \u2014 ${gateT.name}! +${GATE_XP}${trueFormKilled ? ` +${TRUEFORM_XP}` : ""} XP`
-          );
-        else if (trialT) celebrate(`\u2692\uFE0F TRIAL SURVIVED \u2014 the den is cleared! +${TRIAL_XP} XP`);
-        setRestEnd(null);
-        setReadyAt(null);
-        setNow(Date.now());
-        return;
-      }
+      if (consumeFightOutcome()) return;
       const plannedRest = (exSets[j] || {}).rest;
       const exObj = ((data.logs[selDay] || {}).exercises || [])[i];
       const exRest = exObj && REST_OPTS.includes(exObj.rest) ? exObj.rest : null;
@@ -37047,8 +37122,13 @@
               const phase = absTimer.phase;
               const lvl2 = data.absLevel || 1;
               const m = absTimer.i >= 0 ? ABS_CIRCUIT[absTimer.i] : null;
+              const f = m ? absForm(m) : null;
+              const tierTag = m && absEvolved(m.name) ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "abs-tier", children: "II" }) : null;
               if (phase === "done") {
                 const from = absTimer.fromLevel || 1;
+                const evoC = (absTimer.changes || []).filter((c2) => c2.kind === "evolve");
+                const listC = (absTimer.changes || []).filter((c2) => c2.kind !== "evolve");
+                const spellOut = (word, baseD, gap, anim) => [...word].map((ch, i) => ch === " " ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { width: ".35em" } }, i) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: anim, style: { "--d": `${(baseD + i * gap).toFixed(2)}s` }, children: ch }, i));
                 return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sweep-ov", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-head", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-name", children: "CORE" }),
@@ -37068,9 +37148,54 @@
                       from,
                       " \u2192 ",
                       from + 1,
-                      " \xB7 three grow, the rest hold"
+                      " \xB7 ",
+                      evoC.length ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                        "the mastered ",
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { style: { color: "var(--gold)" }, children: "evolve" })
+                      ] }) : "three grow, the rest hold"
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-scaleList", children: (absTimer.changes || []).map((c2, k2) => {
+                    evoC.map((c2) => {
+                      const preO = c2.oldHold ? "" : "\xD7", uO = c2.oldHold ? "s" : "";
+                      const pre = c2.hold ? "" : "\xD7", u = c2.hold ? "s" : "";
+                      const oldN = c2.oldName.toUpperCase(), newN = c2.name.toUpperCase();
+                      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "evo", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "evo-flare" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "evo-shock" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "evo-stamp", children: "\u2014 EVOLVED \u2014" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "evo-kicker", children: "FORM MASTERED" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "evo-plaque", children: [
+                          oldN,
+                          " \xB7 ",
+                          preO,
+                          c2.from,
+                          uO,
+                          " \xB7 AT THE SUMMIT"
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "evo-old", style: { fontSize: Math.max(19, Math.min(34, Math.floor(470 / oldN.length))) }, children: spellOut(oldN, 2.15, 0.05, "eb") }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "evo-oldnum", children: [
+                          preO,
+                          c2.from,
+                          uO,
+                          " \u2014 as far as this form goes"
+                        ] }),
+                        Array.from({ length: 14 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "evo-spark", style: { "--x": `${18 + i * 67 % 64}%`, "--sway": `${(i % 2 ? 1 : -1) * (6 + i * 13 % 14)}px`, "--d": `${(2.15 + i % 7 * 0.09).toFixed(2)}s` } }, i)),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "evo-new", style: { fontSize: Math.max(22, Math.min(42, Math.floor(560 / newN.length))) }, children: spellOut(newN, 3.3, 0.07, "es") }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "evo-newsub", children: [
+                          "begin at ",
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+                            pre,
+                            c2.to,
+                            u
+                          ] }),
+                          " \u2014 the climb starts over, steeper"
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "evo-pips", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "evo-pip done", children: "I" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "evo-pip lit", children: "II" })
+                        ] })
+                      ] }, c2.oldName);
+                    }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-scaleList", children: listC.map((c2, k2) => {
                       const pre = c2.hold ? "" : "\xD7", u = c2.hold ? "s" : "";
                       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-srow", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "n", children: c2.name }),
@@ -37087,12 +37212,17 @@
                               c2.to,
                               u
                             ] })
+                          ] }) : c2.kind === "devolve" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "new dn", children: [
+                            "back to ",
+                            pre,
+                            c2.to,
+                            u
                           ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: `new ${c2.hold ? "hold" : ""}`, children: [
                             pre,
                             c2.to,
                             u
                           ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `delta ${c2.kind === "max" ? "cap" : c2.kind === "hold" ? "keep" : c2.kind === "down" ? "down" : ""}`, children: c2.kind === "up" ? `\u25B2 +${c2.to - c2.from}${u}` : c2.kind === "down" ? "\u25BC eased" : c2.kind === "max" ? "max" : "holds" })
+                          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `delta ${c2.kind === "max" ? "cap" : c2.kind === "hold" ? "keep" : c2.kind === "down" || c2.kind === "devolve" ? "down" : ""}`, children: c2.kind === "up" ? `\u25B2 +${c2.to - c2.from}${u}` : c2.kind === "down" ? "\u25BC eased" : c2.kind === "devolve" ? "\u25BC the ladder" : c2.kind === "max" ? "max" : "holds" })
                         ] })
                       ] }, k2);
                     }) })
@@ -37100,7 +37230,30 @@
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "sw-ctl", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "chip sw-next", onClick: () => setAbsTimer(null), children: "CLAIM \u203A" }) })
                 ] });
               }
-              if (phase === "move" && m && m.type === "rep") {
+              if (phase === "settle") {
+                return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sweep-ov", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-head", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-name", children: "CORE" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "LAST HOLD" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-rep", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-mvname", children: [
+                      f ? f.name : "Finisher",
+                      tierTag
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-mvper", children: "the circuit is done \u2014 did you hold it all?" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-ctl abs-ctl-col", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "abs-done-btn", onClick: () => finishAbs(), children: "HELD IT \u2713 \u2014 CLAIM" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "abs-fail", onClick: () => {
+                      const f2 = { ...absFails, [absTimer.i]: true };
+                      setAbsFails(f2);
+                      finishAbs(f2);
+                    }, children: "\u2717 dropped early" })
+                  ] })
+                ] });
+              }
+              if (phase === "move" && f && f.type === "rep") {
                 return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sweep-ov", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-head", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-name", children: "CORE" }),
@@ -37111,8 +37264,11 @@
                     ] })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-rep", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-mvname", children: m.name }),
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-mvper", children: m.per || "\xA0" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-mvname", children: [
+                      f.name,
+                      tierTag
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "abs-mvper", children: f.per || "\xA0" }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-repbig", children: [
                       absTargetOf(m),
                       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "REPS" })
@@ -37164,28 +37320,42 @@
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-center", children: [
                     holding && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "abs-ringname", children: [
-                      m.name,
-                      m.per ? ` \xB7 side ${absTimer.side || 1} of 2` : ""
+                      f.name,
+                      f.per ? ` \xB7 side ${absTimer.side || 1} of 2` : ""
                     ] }),
                     flipping && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "abs-ringname", children: [
-                      m.name,
+                      f.name,
                       " \xB7 other side"
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `sw-num ${urgent ? "urg" : ""}`, children: left }),
                     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-lab", children: igniting ? "GET READY" : holding ? "HOLD" : flipping ? "SWITCH SIDES" : "REST" })
                   ] })
-                ] }),
-                nextM && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-nextup", children: [
-                  "next: ",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-                    nextM.name,
-                    " ",
-                    nextM.type === "hold" ? `${absTargetOf(nextM)}s` : `\xD7 ${absTargetOf(nextM)}`
-                  ] })
-                ] }),
+                ] }, `${phase}-${absTimer.side || 0}-${absTimer.i}`),
+                nextM && (() => {
+                  const nf2 = absForm(nextM);
+                  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "abs-nextup", children: [
+                    "next: ",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+                      nf2.name,
+                      " ",
+                      nf2.type === "hold" ? `${absTargetOf(nextM)}s` : `\xD7 ${absTargetOf(nextM)}`
+                    ] })
+                  ] });
+                })(),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-ctl", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "chip sw-next", onClick: absNext, children: holding ? "SKIP \u203A" : "GO \u203A" }),
                   holding && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "chip abs-failchip", onClick: absFail, children: "\u2717 dropped" }),
+                  phase === "rest" && f && f.type === "hold" && !absFails[absTimer.i] && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "button",
+                    {
+                      className: "chip abs-failchip",
+                      onClick: () => {
+                        setAbsFails((f2) => ({ ...f2, [absTimer.i]: true }));
+                        flash("Noted \u2014 eased next time \u2717");
+                      },
+                      children: "\u2717 didn't finish that hold"
+                    }
+                  ),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "link", onClick: () => setAbsTimer(null), children: "stop" })
                 ] })
               ] });
@@ -40097,6 +40267,46 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .abs-srow .delta.keep{color:var(--muted); background:rgba(255,255,255,.05);}
 .abs-srow .delta.down{color:#ff9f8a; background:rgba(224,101,79,.14);}
 .abs-srow .new.dn{color:#ff9f8a;}
+/* ---- evolution reveal (DONE screen) ---- */
+.abs-tier{display:inline-block; font-family:'Anton'; font-size:12px; color:var(--gold); border:1px solid rgba(255,214,102,.45); border-radius:6px; padding:1px 6px; margin-left:8px; vertical-align:middle; letter-spacing:.08em;}
+.evo{position:relative; width:100%; border-radius:18px; padding:20px 14px 16px; text-align:center; overflow:hidden; margin-bottom:12px; flex-shrink:0;
+  background:linear-gradient(180deg, rgba(255,138,60,.07), rgba(255,255,255,.02) 55%);
+  border:1px solid rgba(255,138,60,.35);
+  animation:evoCardIn .5s ease .9s backwards, evoTremble .12s linear 1.4s 10, evoCalm .8s ease 4.4s forwards;}
+@keyframes evoCardIn{from{opacity:0; transform:translateY(14px) scale(.97);} to{opacity:1; transform:none;}}
+@keyframes evoTremble{0%,100%{transform:translate(0,0) rotate(0);} 25%{transform:translate(1.4px,-1px) rotate(.35deg);} 75%{transform:translate(-1.4px,1px) rotate(-.35deg);}}
+@keyframes evoCalm{to{border-color:rgba(255,214,102,.55); box-shadow:0 0 34px rgba(255,214,102,.10), inset 0 0 26px rgba(255,214,102,.05);}}
+@keyframes evoIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+.evo-kicker{font-size:10px; letter-spacing:.22em; color:var(--muted); margin-bottom:9px; animation:evoIn .4s ease 1.05s backwards, evoOut .3s ease 2.75s forwards;}
+.evo-plaque{display:inline-block; font-size:10px; font-weight:800; letter-spacing:.14em; color:var(--gold); border:1px solid rgba(255,214,102,.45); border-radius:999px; padding:3px 10px; margin-bottom:11px; animation:evoIn .4s ease 1.2s backwards, evoOut .3s ease 2.55s forwards;}
+@keyframes evoOut{to{opacity:0; transform:translateY(-8px);}}
+.evo-old{font-family:'Anton'; letter-spacing:.04em; color:var(--chalk); min-height:40px;}
+.evo-old .eb{display:inline-block; animation:evoBurn .75s ease-in forwards; animation-delay:var(--d);}
+@keyframes evoBurn{
+  0%{color:var(--chalk); text-shadow:none; transform:none; opacity:1; filter:none;}
+  35%{color:var(--ember); text-shadow:0 0 14px rgba(255,138,60,.9);}
+  60%{color:#FFE9B8; text-shadow:0 0 22px rgba(255,214,102,1);}
+  100%{transform:translateY(-30px) scale(1.2); opacity:0; filter:blur(7px);}}
+.evo-oldnum{font-family:'Anton'; font-size:14px; color:var(--muted); margin-top:2px; animation:evoIn .4s ease 1.35s backwards, evoBurnNum .5s ease-in 2.6s forwards;}
+@keyframes evoBurnNum{to{opacity:0; filter:blur(4px); transform:translateY(-12px);}}
+.evo-spark{position:absolute; bottom:52%; width:3px; height:3px; border-radius:50%; background:var(--ember); left:var(--x); opacity:0; animation:evoSparkUp 1.1s ease-out forwards; animation-delay:var(--d);}
+@keyframes evoSparkUp{0%{opacity:0; transform:translateY(0) scale(1);} 15%{opacity:1;} 100%{opacity:0; transform:translateY(-86px) translateX(var(--sway)) scale(.4);}}
+.evo-flare{position:absolute; inset:-40%; background:radial-gradient(circle at 50% 46%, rgba(255,214,102,.85), rgba(255,138,60,.35) 30%, transparent 62%); opacity:0; pointer-events:none; animation:evoFlare .8s ease-out 2.95s;}
+@keyframes evoFlare{0%{opacity:0; transform:scale(.25);} 22%{opacity:.95;} 100%{opacity:0; transform:scale(1.9);}}
+.evo-shock{position:absolute; left:50%; top:46%; width:60px; height:60px; margin:-30px 0 0 -30px; border-radius:50%; border:2px solid rgba(255,214,102,.8); opacity:0; pointer-events:none; animation:evoShock .7s ease-out 3.0s;}
+@keyframes evoShock{0%{opacity:.9; transform:scale(.3);} 100%{opacity:0; transform:scale(3.4);}}
+.evo-stamp{position:absolute; left:0; right:0; top:12px; font-family:'Anton'; font-size:15px; letter-spacing:.34em; color:var(--gold); text-shadow:0 0 18px rgba(255,214,102,.55); opacity:0; animation:evoStamp .55s cubic-bezier(.2,1.6,.35,1) 3.05s forwards;}
+@keyframes evoStamp{0%{opacity:0; transform:scale(2.6) rotate(-7deg);} 60%{opacity:1; transform:scale(.94) rotate(-2deg);} 100%{opacity:1; transform:scale(1) rotate(-2deg);}}
+.evo-new{font-family:'Anton'; letter-spacing:.05em; color:var(--gold); margin-top:-36px; min-height:46px;}
+.evo-new .es{display:inline-block; opacity:0; animation:evoSlam .5s cubic-bezier(.2,1.5,.4,1) forwards; animation-delay:var(--d); text-shadow:0 0 22px rgba(255,214,102,.35);}
+@keyframes evoSlam{0%{opacity:0; transform:translateY(30px) scale(1.8);} 70%{opacity:1; transform:translateY(-3px) scale(.96);} 100%{opacity:1; transform:none;}}
+.evo-newsub{font-size:12px; color:var(--chalk); font-weight:700; margin-top:5px; opacity:0; animation:evoIn .5s ease 3.85s forwards;}
+.evo-newsub b{color:var(--gold); font-family:'Anton'; font-size:14px; letter-spacing:.04em;}
+.evo-pips{display:flex; gap:12px; justify-content:center; margin-top:11px;}
+.evo-pip{font-family:'Anton'; font-size:11px; letter-spacing:.1em; color:var(--muted); border:1px solid rgba(255,255,255,.16); border-radius:8px; padding:3px 11px; white-space:nowrap; opacity:0; animation:evoIn .4s ease 4.0s forwards;}
+.evo-pip.done{color:#0A0B0E; background:var(--muted); border-color:var(--muted);}
+.evo-pip.lit{color:#0A0B0E; background:var(--gold); border-color:var(--gold); animation:evoIn .4s ease 4.0s forwards, evoPipPop .45s cubic-bezier(.2,1.6,.4,1) 4.25s;}
+@keyframes evoPipPop{0%{transform:scale(1);} 40%{transform:scale(1.35); box-shadow:0 0 18px rgba(255,214,102,.7);} 100%{transform:scale(1);}}
 .abs-fail{width:100%; border:1px solid rgba(224,101,79,.4); background:rgba(224,101,79,.08); color:#ff9f8a;
   border-radius:14px; padding:13px; font-family:'Archivo'; font-weight:800; font-size:13px; letter-spacing:.03em; cursor:pointer;}
 .abs-fail:active{background:rgba(224,101,79,.18);}
