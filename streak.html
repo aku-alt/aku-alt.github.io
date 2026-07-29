@@ -31397,7 +31397,7 @@
   var BB_THEMES = ["forge", "arcade", "souls"];
   var P2_REST = 45;
   var stripLift = (s2) => s2.toLowerCase().replace(/\b(barbell|dumbbell|db)\b/g, "").replace(/\s+/g, " ").trim();
-  var APP_VERSION = "v2026.07.29-evo.8";
+  var APP_VERSION = "v2026.07.29-n44.9";
   var STRETCH_MINUTES = 15;
   var ABS_XP = 5;
   var ABS_CIRCUIT = [
@@ -31472,7 +31472,7 @@
     { xp: 3500, title: "Dragonslayer" }
   ];
   var cardioOnWeight = (on, off) => 1 + 2 * (on / Math.max(1, on + off));
-  var cardioEffortSec = (cf) => cf.mode === "int" ? cf.wu + cf.r * cf.on * cardioOnWeight(cf.on, cf.off) : cf.wu + cf.min * 60;
+  var cardioEffortSec = (cf) => cf.mode !== "steady" ? cf.wu + cf.r * cf.on * cardioOnWeight(cf.on, cf.off) : cf.wu + cf.min * 60;
   var cardioBonusFor = (effortSec) => Math.max(0, Math.min(15, Math.round((effortSec / 60 - 15) / 3)));
   var SEASON = {
     name: "Christmas Challenge",
@@ -38765,9 +38765,10 @@
         const fmtd = (s3) => s3 >= 60 ? s3 % 60 ? `${Math.floor(s3 / 60)}'${s3 % 60}''` : `${s3 / 60}'` : `${s3}''`;
         if (cf.step === "pick") {
           const isInt = cf.mode === "int";
+          const is44 = cf.mode === "n44";
           const effort2 = cardioEffortSec(cf);
           const onW = cardioOnWeight(cf.on, cf.off);
-          const totalS = isInt ? cf.wu + cf.r * cf.on + (cf.r - 1) * cf.off : cf.wu + cf.min * 60;
+          const totalS = isInt || is44 ? cf.wu + cf.r * cf.on + (cf.r - 1) * cf.off : cf.wu + cf.min * 60;
           const xpTotal = XP_FOR.cardio + cardioBonusFor(effort2);
           const setF = (k2, v) => setCardioFlow({ ...cf, [k2]: v });
           const QRow = ({ label, opts, valKey, col, render }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-row", children: [
@@ -38789,21 +38790,39 @@
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "BUILD YOUR SESSION" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-body", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "cf-mode", children: [["steady", "STEADY", "#58B368"], ["int", "INTERVALS", "var(--ember)"]].map(([id, l, col]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "cf-mode", children: [["steady", "STEADY", "#58B368"], ["int", "INTERVALS", "var(--ember)"], ["n44", "4\xD74", "var(--red)"]].map(([id, l, col]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "button",
                 {
-                  onClick: () => setF("mode", id),
+                  onClick: () => setCardioFlow({
+                    ...cf,
+                    mode: id,
+                    // the Norwegian protocol is fixed: 4' hard / 3' easy
+                    ...id === "n44" ? { on: 240, off: 180, r: 4 } : {},
+                    ...id === "int" && cf.mode === "n44" ? { on: 60, off: 60, r: 8 } : {}
+                  }),
                   style: cf.mode === id ? { background: col, color: "#10131a" } : null,
                   children: l
                 },
                 id
               )) }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "WARM-UP", opts: [0, 120, 180, 300], valKey: "wu", col: "#58B368", render: (o) => o === 0 ? "\u2014" : fmtd(o) }),
-              isInt ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              isInt && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "ON", opts: [30, 45, 60, 90, 120], valKey: "on", col: "var(--ember)", render: fmtd }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "OFF", opts: [15, 30, 45, 60], valKey: "off", col: "var(--steel)", render: fmtd }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "ROUNDS", opts: [6, 8, 10, 12], valKey: "r", col: "var(--ember)", render: (o) => `\xD7${o}` })
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "TIME", opts: [20, 30, 45], valKey: "min", col: "#58B368", render: (o) => `${o}'` })
+              ] }),
+              is44 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-row", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "cf-lab", children: "PROTOCOL" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-n44", children: [
+                    "4' HARD ",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { children: "/" }),
+                    " 3' EASY"
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "ROUNDS", opts: [3, 4], valKey: "r", col: "var(--red)", render: (o) => `\xD7${o}` })
+              ] }),
+              !isInt && !is44 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(QRow, { label: "TIME", opts: [20, 30, 45], valKey: "min", col: "#58B368", render: (o) => `${o}'` })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-foot", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-verdict", children: [
@@ -38822,11 +38841,16 @@
                 onW.toFixed(2).replace(/0$/, ""),
                 " \u2014 shorter rests, richer spoils. Rest pays nothing."
               ] }),
+              is44 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cf-density", children: [
+                "\u{1F3D4} The Norwegian forge \u2014 four minutes at the edge, three to breathe. VO\u2082max is made here. Hard pays \xD7",
+                onW.toFixed(2).replace(/0$/, ""),
+                "."
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "button",
                 {
                   className: "cf-start",
-                  style: !isInt ? { background: "#58B368" } : null,
+                  style: cf.mode === "steady" ? { background: "#58B368" } : is44 ? { background: "var(--red)" } : null,
                   onClick: () => setCardioFlow({ ...cf, step: "run", startMs: Date.now(), awarded: false }),
                   children: "\u25B6 START"
                 }
@@ -38887,8 +38911,8 @@
           inS = plan[i].d;
         }
         const s2 = plan[si];
-        const KC = { u: "#58B368", g: "#58B368", w: "#FF8A3C", s: "#74B3FF" };
-        const KL = { u: "WARM-UP", g: "STEADY", w: "WORK", s: "REST" };
+        const KC = { u: "#58B368", g: "#58B368", w: cf.mode === "n44" ? "#E0654F" : "#FF8A3C", s: "#74B3FF" };
+        const KL = cf.mode === "n44" ? { u: "WARM-UP", g: "STEADY", w: "HARD", s: "EASY" } : { u: "WARM-UP", g: "STEADY", w: "WORK", s: "REST" };
         const left = getting ? Math.ceil(5 - tSec) : Math.max(0, Math.ceil(s2.d - inS));
         const bigT = s2.d > 90;
         const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
@@ -38906,7 +38930,7 @@
         return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sweep-ov", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-head", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "sw-name", children: "CARDIO" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: done ? "DONE" : getting ? "READY" : s2.k === "u" ? "WARMING UP" : cf.mode === "int" ? `ROUND ${roundNo} / ${cf.r}` : `${cf.min}' STEADY` })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: done ? "DONE" : getting ? "READY" : s2.k === "u" ? "WARMING UP" : cf.mode !== "steady" ? `ROUND ${roundNo} / ${cf.r}` : `${cf.min}' STEADY` })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sw-ringwrap", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { width: "280", height: "280", style: { transform: "rotate(-90deg)" }, children: plan.map((x2, i) => {
@@ -40324,6 +40348,8 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 
 .cf-density{font-size:11px; color:var(--muted); margin:2px 0 8px; letter-spacing:.04em;}
 .cf-density{text-align:center;}
+.cf-n44{font-family:'Anton'; font-size:17px; letter-spacing:.08em; color:var(--red); padding:6px 0;}
+.cf-n44 i{font-style:normal; color:var(--muted); padding:0 6px;}
 
 /* ===== full-screen workout session (forge) ===== */
 .ws{position:fixed; inset:0; z-index:35; overflow:hidden; color:var(--chalk);
