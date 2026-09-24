@@ -1,0 +1,5 @@
+{
+  "name": "streak-personal-workout",
+  "private": true,
+  "scripts": { "build": "node scripts/build.mjs", "test": "node --test tests/*.test.cjs", "verify": "npm test && npm run build" }
+}
