@@ -1210,6 +1210,64 @@
       return this.props.children;
     }
   };
+  function RestSummary({restEnd,restTotal,now,nextValue,nextName}) {
+    const left=Math.max(0,Math.ceil((restEnd-now)/1000));
+    const progress=Math.max(0,Math.min(100,left/Math.max(1,restTotal)*100));
+    const e=import_jsx_runtime.jsx,j=import_jsx_runtime.jsxs;
+    return j('section',{className:'ws-rest-summary','aria-label':'Rest timer and next set',children:[
+      j('div',{className:'ws-rest-columns',children:[
+        j('div',{className:'ws-rest-info',children:[e('span',{className:'ws-rest-label',children:'REST REMAINING'}),e('strong',{role:'timer','aria-label':'Rest remaining',children:Math.floor(left/60)+':'+String(left%60).padStart(2,'0')})]}),
+        j('div',{className:'ws-next-info',children:[e('span',{className:'ws-rest-label',children:'NEXT SET'}),e('strong',{children:nextValue||'Choose below'}),nextName&&e('span',{className:'ws-next-name',children:nextName})]})
+      ]}),
+      e('div',{className:'ws-rest-track','aria-hidden':true,children:e('div',{style:{width:progress+'%'}})})
+    ]});
+  }
+  function MobilityRest({plan,now,onDisable}) {
+    const ids=Object.keys(RestMobility.movements);
+    const [selectedId,setSelectedId]=import_react41.useState(plan?.id||ids[0]);
+    const [startedAt,setStartedAt]=import_react41.useState(null);
+    const [dismissed,setDismissed]=import_react41.useState(false);
+    const swipeStart=import_react41.useRef(null);
+    import_react41.useEffect(()=>{if(plan?.id)setSelectedId(plan.id);},[plan?.id]);
+    import_react41.useEffect(()=>{
+      if(!plan||plan.kind!=='movement')return;
+      const i=ids.indexOf(selectedId);
+      for(const id of [selectedId,ids[(i+1)%ids.length],ids[(i+ids.length-1)%ids.length]]){
+        const asset=new Image();asset.src=MobilityArt.assets[id];
+      }
+    },[selectedId,plan?.kind]);
+    if(!plan)return null;
+    const selected=RestMobility.choose(plan,selectedId);
+    const phase=RestMobility.phase(selected,now,startedAt,dismissed);
+    const active=['settle','ready','moving','done','deferred'].includes(phase);
+    const left=startedAt===null?20:Math.max(0,Math.ceil((startedAt+20000-now)/1000));
+    const title=active?selected.title:phase==='prepare'?'Prepare for your next set':'Recovery first';
+    const status=phase==='deferred'?'Save this one for after your workout.':phase==='settle'?'Let your breathing settle first.':phase==='moving'?(selected.bilateral?'Move gently. Rest keeps running.':left>10?'First side. Move gently.':'Switch sides gently.'):phase==='done'?'Finished. Keep resting.':phase==='prepare'?'Rest and get set up.':active?'Pain-free only. No forcing.':plan.reason||'Take this break to recover.';
+    const e=import_jsx_runtime.jsx,j=import_jsx_runtime.jsxs;
+    const browse=delta=>{if(phase!=='moving')setSelectedId(ids[(ids.indexOf(selectedId)+delta+ids.length)%ids.length]);};
+    return j('section',{className:'ws-mobility','aria-label':'Optional rest mobility',children:[
+      j('div',{className:'ws-mobility-top',children:[e('span',{className:'ws-mobility-label',children:active?'OPTIONAL MOBILITY':'RECOVERY'}),active&&e('span',{className:'ws-mobility-position',children:String(ids.indexOf(selectedId)+1).padStart(2,'0')+' / '+ids.length})]}),
+      e('h3',{'aria-live':'polite',children:title}),
+      active&&j('div',{className:'ws-mobility-image',onPointerDown:event=>{swipeStart.current={x:event.clientX,y:event.clientY};},onPointerCancel:()=>{swipeStart.current=null;},onPointerUp:event=>{const start=swipeStart.current;swipeStart.current=null;if(start&&Math.abs(event.clientX-start.x)>45&&Math.abs(event.clientX-start.x)>Math.abs(event.clientY-start.y)*1.5)browse(event.clientX<start.x?1:-1);},children:[
+        e('div',{dangerouslySetInnerHTML:{__html:MobilityArt.render(selectedId)}},selectedId),
+        e('span',{className:'ws-mobility-dose',children:phase==='moving'?(selected.bilateral?'Gentle movement':left>10?'First side':'Switch sides'):selected.dose})
+      ]}),
+      active&&e('p',{className:'ws-mobility-cue',children:selected.shortCue}),
+      active&&e('div',{className:'ws-mobility-track','aria-hidden':true,children:e('div',{style:{width:(phase==='done'?100:phase==='moving'?(20-left)*5:0)+'%'}})}),
+      active&&j('div',{className:'ws-mobility-actions',children:[
+        e('button',{disabled:phase!=='ready',onClick:()=>setStartedAt(now),children:phase==='settle'?'Recover first':phase==='moving'?left+'s remaining':phase==='done'?'Done ✓':phase==='deferred'?'After workout':'Start 20s'}),
+        e('button',{onClick:()=>setDismissed(true),children:phase==='moving'?'Stop & rest':'Just rest'})
+      ]}),
+      e('p',{'aria-live':'polite',className:'ws-mobility-status',children:status}),
+      active&&j('nav',{className:'ws-mobility-nav','aria-label':'Browse stretches',children:[
+        e('button',{disabled:phase==='moving','aria-label':'Previous stretch',onClick:()=>browse(-1),children:'←'}),
+        e('span',{children:selected.area}),
+        e('button',{disabled:phase==='moving','aria-label':'Next stretch',onClick:()=>browse(1),children:'→'})
+      ]}),
+      active&&j('details',{className:'ws-mobility-how',children:[e('summary',{children:'Form & source'}),e('p',{children:selected.detail+' Keep it easy; save deeper holds for after lifting. Stop for pain, tingling or dizziness. Use stable support and a clear space. AI-created pose guide; do not force the pictured range.'}),e('a',{href:selected.url,target:'_blank',rel:'noopener noreferrer',children:selected.source+' ↗'}),onDisable&&e('button',{className:'ws-mobility-off',onClick:onDisable,children:'Turn off for this workout'})]}),
+      !active&&onDisable&&e('button',{className:'ws-mobility-off',onClick:onDisable,children:'Turn off for this workout'})
+    ]});
+  }
   function WorkoutSession({
     log: log2,
     now,
@@ -1227,7 +1285,10 @@
     onAdd,
     lastFor,
     recentNames,
-    progFor
+    progFor,
+    mobilityOffset=0,
+    mobilityBattle=false,
+    onMobilityOff
   }) {
     const exs = log2.exercises || [];
     const openExs = exs.map((e, i) => ({ e, i, left: e.skipped ? 0 : e.sets.filter((s2) => !s2.done).length })).filter((x2) => x2.left > 0);
@@ -1246,11 +1307,12 @@
     const [edKind,setEdKind]=(0,import_react41.useState)('rename');
     const [edFuture,setEdFuture]=(0,import_react41.useState)(true);
     const resting = !!(restEnd && now < restEnd);
-    const ringPct = resting ? Math.max(0, Math.min(1, (restEnd - now) / 1e3 / Math.max(1, restTotal))) : 0;
     const armed = !resting && !!readyAt;
     const curEx = exs[curExI] && !exs[curExI].skipped ? exs[curExI] : null;
     const si = curEx ? curEx.sets.findIndex((s2) => !s2.done) : -1;
     const cur = si >= 0 && curEx ? curEx.sets[si] : null;
+    const nextMobilityEx=pendingChoose ? (selNext!=null?exs[selNext]:null) : cur?curEx:null;
+    const mobilityPlan=RestMobility.plan({log:log2,nextExercise:nextMobilityEx,restEnd,restTotal,now,offset:mobilityOffset,battle:mobilityBattle});
     const editKey = `${curExI}:${si}`;
     const prog = curEx && progFor ? progFor(curEx.name) : null;
     const baseKg = cur ? cur.kg : 0; // Suggestions never silently change the load.
@@ -1320,7 +1382,6 @@
       setSsFlash(false);
     };
     const dots = curEx ? curEx.sets.map((s2, k2) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `ws-dot ${s2.done ? "on" : ""}` }, k2)) : null;
-    const CIRC = 2 * Math.PI * 54;
     if (editor) {
       const isRename = editor.mode === "rename";
       const isWorkout=editor.mode==='workout';
@@ -1418,7 +1479,7 @@
           }, children: "\uFF0B ONE MORE EXERCISE" })
         ] })
       ] }),
-      scene === "work" && !allDone && curEx && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-screen", children: [
+      scene === "work" && !allDone && curEx && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `ws-screen ${resting?'ws-resting':''} ${resting && mobilityPlan ? 'ws-with-mobility' : ''}`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-head", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-eyebrow", children: [
             splitName,
@@ -1445,23 +1506,7 @@
           lastFor && (()=>{const last=lastFor(curEx);const prior=last?.sets[si];return prior?import_jsx_runtime.jsx('div',{className:'ws-last-set',children:`Last completed: ${wShow(prior.kg,unit2)} ${uLbl(unit2)} × ${prior.reps} · ${niceDate(last.date)}`}):null;})()
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-main", children: resting && pendingChoose ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-ringwrap sm", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 120 120", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { className: "ws-rbg", cx: "60", cy: "60", r: "54" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "circle",
-                {
-                  className: "ws-rfg",
-                  cx: "60",
-                  cy: "60",
-                  r: "54",
-                  strokeDasharray: CIRC,
-                  strokeDashoffset: CIRC * (1 - ringPct)
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-rin", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-restword", children: "REST" }) })
-          ] }),
+          import_jsx_runtime.jsx(RestSummary,{restEnd,restTotal,now,nextName:'Choose your next exercise'}),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-chtitle", children: "MACHINE BOOKED? PICK WHAT'S NEXT" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-list", children: [
             pickable.map((x2) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
@@ -1498,32 +1543,7 @@
             )
           ] })
         ] }) : resting && cur ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-resteyebrow", children: "R E S T" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-ringwrap", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 120 120", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { className: "ws-rbg", cx: "60", cy: "60", r: "54" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "circle",
-                {
-                  className: "ws-rfg",
-                  cx: "60",
-                  cy: "60",
-                  r: "54",
-                  strokeDasharray: CIRC,
-                  strokeDashoffset: CIRC * (1 - ringPct)
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-rin", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "NEXT" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: wShow(cur.kg, unit2) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                uLbl(unit2),
-                " \xD7 ",
-                cur.reps
-              ] })
-            ] })
-          ] })
+          import_jsx_runtime.jsx(RestSummary,{restEnd,restTotal,now,nextValue:wShow(cur.kg,unit2)+' '+uLbl(unit2)+' × '+cur.reps,nextName:curEx.name})
         ] }) : cur ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-stepblock", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-stepval", children: [
@@ -1564,6 +1584,9 @@
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-msg", children: prog.msg })
           ] })
         ] }) : null }),
+        resting && mobilityPlan && import_jsx_runtime.jsxs(import_jsx_runtime.Fragment,{children:[
+          import_jsx_runtime.jsx(MobilityRest,{plan:mobilityPlan,now,onDisable:log2.restMobilityOff?null:onMobilityOff},String(restEnd))
+        ]}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-foot", children: resting && pendingChoose ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
@@ -4513,7 +4536,7 @@
         const day = next.logs[selDay];
         if (!day || !day.exercises[i]) return prev;
         const exercises = day.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
-        exercises[i].sets[j] = { ...exercises[i].sets[j], done: true };
+        exercises[i].sets[j] = { ...exercises[i].sets[j], done: true, doneAt: Date.now() };
         if (exercises[i].skipped) exercises[i] = { ...exercises[i], skipped: false };
         const doneSet = exercises[i].sets[j];
         const nm = stripLift(exercises[i].name);
@@ -7719,6 +7742,9 @@
               onAdd: wsAdd,
               recentNames,
               progFor: (name) => computeProg(name, selLog.split || suggested, selDay),
+              mobilityOffset: WorkoutCore.allSessions(data.logs).filter(s=>s.sessionId!==selLog.sessionId && s.split===selLog.split && s.status==='completed').length,
+              mobilityBattle: !!fight || !!bbOutro,
+              onMobilityOff: ()=>setData(prev=>{const next=clone(prev);next.logs[selDay].restMobilityOff=true;persist(next);return next;}),
               onSkipRest: () => {
                 setRestEnd(null);
                 setReadyAt(Date.now());
@@ -9059,6 +9085,44 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .ws-dot{width:10px; height:10px; border-radius:50%; background:#2a2018; border:1px solid #3a2a1c;}
 .ws-dot.on{background:var(--ember); border-color:var(--ember); box-shadow:0 0 8px rgba(255,138,60,.5);}
 .ws-main{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%;}
+.ws-screen.ws-resting{overflow-y:auto;justify-content:flex-start;gap:12px;}
+.ws-resting .ws-main{flex:0 0 auto;}
+.ws-rest-summary{box-sizing:border-box;width:100%;max-width:360px;padding:6px 0 14px;text-align:left;}
+.ws-rest-columns{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:16px;align-items:start;}
+.ws-rest-info,.ws-next-info{display:flex;flex-direction:column;min-width:0;}
+.ws-rest-label{font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:700;}
+.ws-rest-info strong{font:42px/1.2 'Anton',sans-serif;color:var(--ember);font-variant-numeric:tabular-nums;margin-top:6px;}
+.ws-next-info strong{font:25px/1.3 'Anton',sans-serif;color:var(--gold);margin-top:6px;overflow-wrap:anywhere;}
+.ws-next-name{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;overflow-wrap:anywhere;}
+.ws-rest-track{height:3px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:12px;}
+.ws-rest-track>div{height:100%;background:var(--ember);}
+.ws-mobility{box-sizing:border-box;flex-shrink:0;width:100%;max-width:360px;padding:15px 15px 0;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;}
+.ws-mobility-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ws-mobility-label{font-size:11px;letter-spacing:.07em;color:var(--gold);font-weight:700;}
+.ws-mobility-position{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.ws-mobility h3{font-size:19px;margin:10px 0 12px;line-height:1.3;}
+.ws-mobility-image{position:relative;border-radius:10px;overflow:hidden;background:#171a20;touch-action:pan-y;}
+.ws-mobility .ma-guide{display:block;width:100%;height:auto;max-height:205px;aspect-ratio:4/3;object-fit:contain;background:#171a20;}
+.ws-mobility-dose{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--gold);background:#13161bee;border-radius:6px;padding:5px 8px;white-space:nowrap;max-width:95%;}
+.ws-mobility .ws-mobility-cue{font-size:12px;line-height:1.5;min-height:36px;margin:12px 0 8px;}
+.ws-mobility-track{height:3px;background:var(--line);border-radius:3px;overflow:hidden;}
+.ws-mobility-track>div{height:100%;background:var(--gold);}
+.ws-mobility-actions{display:flex;gap:8px;margin-top:12px;}
+.ws-mobility-actions button{flex:1;min-width:0;min-height:44px;padding:10px 8px;border:1px solid var(--line);border-radius:10px;background:var(--floor);color:var(--chalk);font:600 13px 'Archivo',sans-serif;}
+.ws-mobility-actions button:first-child:not(:disabled){background:var(--gold);border-color:var(--gold);color:#191814;}
+.ws-mobility-actions button:disabled,.ws-mobility-nav button:disabled{opacity:.55;cursor:default;}
+.ws-mobility .ws-mobility-status{font-size:11px;line-height:1.5;color:var(--muted);margin:10px 0 12px;text-align:center;min-height:17px;}
+.ws-mobility-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);}
+.ws-mobility-nav button{border:0;background:none;color:var(--gold);font-size:20px;width:44px;min-height:44px;cursor:pointer;}
+.ws-mobility-nav span{font-size:11px;color:var(--muted);letter-spacing:.04em;text-align:center;}
+.ws-mobility-how{font-size:12px;color:var(--muted);border-top:1px solid var(--line);}
+.ws-mobility-how summary{cursor:pointer;min-height:38px;align-content:center;padding:10px 0;}
+.ws-mobility-how p{font-size:12px;line-height:1.6;margin:0 0 12px;}
+.ws-mobility-how a{color:var(--gold);display:inline-block;min-height:32px;margin-bottom:8px;}
+.ws-mobility-off{background:none;border:0;color:var(--muted);font-size:12px;min-height:44px;padding:10px 0;display:block;}
+.ws-mobility button:focus-visible,.ws-mobility summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+@media(prefers-reduced-motion:no-preference){.ws-mobility-image>.ma-guide,.ws-mobility-image>div{animation:wsMobilityIn .18s ease-out;}.ws-rest-track>div,.ws-mobility-track>div{transition:width .2s linear;}}
+@keyframes wsMobilityIn{from{opacity:.5;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 .ws-foot{width:100%; max-width:340px; display:flex; flex-direction:column; align-items:center;
   gap:10px; padding-bottom:6px;}
 .ws-cta{border:none; border-radius:14px; padding:16px 22px; font-weight:800; font-size:16px;

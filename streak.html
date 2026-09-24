@@ -31540,6 +31540,233 @@ var WorkoutStorage = (() => {
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
 
+// Static local artwork and form guidance. Optional mobility, not a longevity prescription.
+var MobilityLibrary = {
+  "hip-flexor": {
+    "title": "Half-kneeling hip flexor",
+    "area": "HIPS",
+    "cue": "Stay tall. Gently tuck your pelvis.",
+    "detail": "Pad the kneeling knee. Shift forward slightly without arching your lower back; repeat on the other side.",
+    "source": "Kent Community Health NHS",
+    "url": "https://www.kentcht.nhs.uk/leaflet/stretching-exercises/",
+    "bilateral": false,
+    "alt": "Side view of an athlete in a half-kneeling lunge, torso upright and hands supported on the front thigh."
+  },
+  "figure-four": {
+    "title": "Supine figure four",
+    "area": "HIPS · GLUTES",
+    "cue": "Draw the thigh in—not the knee.",
+    "detail": "Cross one ankle over the opposite thigh. Hold behind the supporting thigh and gently draw it toward you. Keep your head down.",
+    "source": "NHS",
+    "url": "https://www.nhs.uk/live-well/exercise/how-to-stretch-after-exercising/",
+    "bilateral": false,
+    "alt": "Athlete lying on his back, one ankle crossed over the opposite thigh, hands behind the supporting thigh."
+  },
+  "adductor": {
+    "title": "Butterfly stretch",
+    "area": "INNER THIGHS",
+    "cue": "Sit tall. Let the knees relax.",
+    "detail": "Bring your soles together and allow the knees to open. Do not push them down. Use cushions under the knees if needed.",
+    "source": "Hinge Health",
+    "url": "https://www.hingehealth.io/resources/articles/butterfly-stretch/",
+    "bilateral": true,
+    "alt": "Athlete seated upright with soles together, knees open and hands around the ankles."
+  },
+  "hamstring": {
+    "title": "Strap hamstring stretch",
+    "area": "BACK OF THIGHS",
+    "cue": "Lift gently. Keep a soft knee.",
+    "detail": "Lie on your back with a strap around one foot. Raise that leg within a comfortable range; keep your head down. Repeat on the other side.",
+    "source": "Physitrack",
+    "url": "https://us.physitrack.com/home-exercise-video/hamstring-stretch-with-strap",
+    "bilateral": false,
+    "alt": "Supine athlete holding a strap around one raised foot; the other knee is bent and foot rests on the floor."
+  },
+  "quad": {
+    "title": "Supported quad stretch",
+    "area": "FRONT OF THIGHS",
+    "cue": "Knees close. Keep your back neutral.",
+    "detail": "Hold a stable support and bring one heel toward your bottom. Avoid twisting the knee or leaning backward; repeat on the other side.",
+    "source": "Kent Community Health NHS",
+    "url": "https://www.kentcht.nhs.uk/leaflet/stretching-exercises/",
+    "bilateral": false,
+    "alt": "Standing athlete supporting himself against a wall while holding one ankle behind him, knees close."
+  },
+  "calf-wall": {
+    "title": "Straight-knee calf stretch",
+    "area": "CALVES · ANKLES",
+    "cue": "Back knee straight. Heel stays down.",
+    "detail": "Place your hands on a wall and step one foot back. Lean forward without lifting the rear heel; repeat on the other side.",
+    "source": "Kent Community Health NHS",
+    "url": "https://www.kentcht.nhs.uk/leaflet/stretching-exercises/",
+    "bilateral": false,
+    "alt": "Athlete leaning into a wall, front knee bent, back knee straight and rear heel on the floor."
+  },
+  "soleus-wall": {
+    "title": "Bent-knee calf stretch",
+    "area": "LOWER CALVES · ANKLES",
+    "cue": "Bend the back knee. Keep the heel down.",
+    "detail": "Use a shorter wall-supported stance. Bend the rear knee while keeping that heel grounded; repeat on the other side.",
+    "source": "Kent Community Health NHS",
+    "url": "https://www.kentcht.nhs.uk/leaflet/stretching-exercises/",
+    "bilateral": false,
+    "alt": "Athlete in a short wall-supported stance, both knees bent and the rear heel kept on the floor."
+  },
+  "open-book": {
+    "title": "Open-book rotation",
+    "area": "UPPER BACK",
+    "cue": "Open your chest. Keep knees stacked.",
+    "detail": "Lie on your side with knees bent together. Sweep the top arm open and let your gaze follow, without forcing the hand to the floor. Return slowly.",
+    "source": "Leeds Teaching Hospitals NHS",
+    "url": "https://www.leedsth.nhs.uk/patients/resources/physiotherapy-exercises-for-breast-pain-with-chest-wall-musculoskeletal-symptoms/",
+    "bilateral": false,
+    "alt": "Side-lying athlete with bent knees stacked, chest rotating open and top arm reaching diagonally behind him."
+  },
+  "lat-reach": {
+    "title": "Supported lat reach",
+    "area": "LATS · SHOULDERS",
+    "cue": "Hips back. Reach without arching.",
+    "detail": "Kneel in front of a stable bench and rest your hands on it. Ease your hips back while keeping your ribs controlled. This is a supported kneeling variation.",
+    "source": "Dynamic Health NHS",
+    "url": "https://dynamichealth.nhs.uk/help-and-advice/mid-back-pain/",
+    "bilateral": true,
+    "alt": "Athlete kneeling before a low stable bench, hands reaching forward on its top and hips moving back."
+  },
+  "doorway-chest": {
+    "title": "Doorway chest stretch",
+    "area": "CHEST · SHOULDERS",
+    "cue": "Turn gently away. No shoulder pinch.",
+    "detail": "Rest one forearm against a door frame with the elbow around shoulder height. Turn away slightly until you feel a comfortable chest stretch; repeat on the other side.",
+    "source": "Memorial Sloan Kettering",
+    "url": "https://www.mskcc.org/cancer-care/patient-education/stretching-exercises-gvhd",
+    "bilateral": false,
+    "alt": "Athlete standing beside a door frame with one forearm supported, torso turning gently away."
+  },
+  "cross-body": {
+    "title": "Cross-body shoulder",
+    "area": "BACK OF SHOULDERS",
+    "cue": "Support the upper arm—not the elbow.",
+    "detail": "Bring one arm across your chest. Use the other hand above the elbow to guide it, keeping the shoulder relaxed. Repeat on the other side.",
+    "source": "AAOS OrthoInfo",
+    "url": "https://www.orthoinfo.org/recovery/rotator-cuff-and-shoulder-conditioning-program/",
+    "bilateral": false,
+    "alt": "Athlete bringing an arm across his chest, opposite hand supporting the upper arm above the elbow."
+  },
+  "triceps": {
+    "title": "Overhead triceps",
+    "area": "UPPER ARMS · SHOULDERS",
+    "cue": "Elbow up. Ribs stay down.",
+    "detail": "Raise one arm and bend the elbow so the hand moves behind your head. Support that elbow gently with the other hand; repeat on the other side.",
+    "source": "MedlinePlus",
+    "url": "https://medlineplus.gov/ency/imagepages/19488.htm",
+    "bilateral": false,
+    "alt": "Athlete with one arm overhead and elbow bent, opposite hand gently supporting the raised elbow."
+  },
+  "cat-cow": {
+    "title": "Cat–cow mobility",
+    "area": "SPINE",
+    "cue": "Slowly round, then gently release.",
+    "detail": "From hands and knees, alternate a comfortable rounded back with a gentle arch. Move without forcing your neck or lower back. The image shows the rounded phase only.",
+    "source": "Berkshire Healthcare NHS",
+    "url": "https://www.berkshirehealthcare.nhs.uk/advice/mid-back-pain",
+    "bilateral": true,
+    "alt": "Athlete on hands and knees demonstrating the rounded-back phase of cat-cow; a static image, not a full movement sequence."
+  },
+  "wrist-flexor": {
+    "title": "Wrist-flexor stretch",
+    "area": "FOREARMS · WRISTS",
+    "cue": "Ease the palm back. Keep the elbow soft.",
+    "detail": "Extend one arm with the palm facing away. Use the other hand for light assistance into wrist extension. Stop if you feel tingling or pain; repeat on the other side.",
+    "source": "AAOS OrthoInfo",
+    "url": "https://orthoinfo.aaos.org/globalassets/pdfs/2022-therapeutic-exercise-program-for-carpal-tunnel.pdf",
+    "bilateral": false,
+    "alt": "Athlete extending one arm, palm facing away in a stop-sign position, with the other hand gently supporting it."
+  },
+  "neck-side": {
+    "title": "Gentle neck side-bend",
+    "area": "NECK",
+    "cue": "Ear toward shoulder. No pulling.",
+    "detail": "Keep both shoulders relaxed as you tilt your head a little to one side. Return slowly and repeat on the other side. Stop for pain or dizziness.",
+    "source": "Cambridge University Hospitals NHS",
+    "url": "https://www.cuh.nhs.uk/patient-information/neck-exercises-and-advice/",
+    "bilateral": false,
+    "alt": "Athlete with shoulders relaxed and level, head tilted slightly to one side, hands relaxed without pulling on the head."
+  }
+};
+if(typeof module!=='undefined' && module.exports)module.exports=MobilityLibrary;
+
+// Optional movement prompts, never training prescriptions or longevity scores.
+var RestMobility = (() => {
+  const library=typeof MobilityLibrary!=='undefined'?MobilityLibrary:require('./mobility-library.js');
+  const movements=Object.fromEntries(Object.entries(library).map(([id,item])=>[id,{...item,dose:item.bilateral?'20 seconds, gently':'10 seconds each side'}]));
+  const shortCues=Object.fromEntries(Object.entries(movements).map(([id,item])=>[id,item.cue]));
+  const lower=['hip-flexor','figure-four','adductor','hamstring','quad','calf-wall','soleus-wall'];
+  const pools={PUSH:lower,PULL:['calf-wall','soleus-wall','hip-flexor','figure-four','adductor','hamstring','quad'],LEGS:['open-book','lat-reach','doorway-chest','cross-body','triceps','cat-cow','wrist-flexor','neck-side']};
+  const excluded = /\b(abs?|abdominals?|core|planks?|crunch(?:es)?|sit.?ups?|leg raises?|knee raises?|russian twist|wood.?chop|pallof|dead.?bug|mountain climber|cardio|running|treadmill|cycling|bike|rowing|elliptical|stair|burpees?|jump rope)\b/i;
+  const demanding = /deadlift|\brdl\b|squat|leg press|lunge|split squat|bench press|overhead press|shoulder press|military press|barbell row|bent.?over row|clean|snatch|good morning|farmer|carry|shrug/i;
+  const familiar = /press|fly|flies|raise|extension|pushdown|curl|pull.?up|chin.?up|pulldown|pull.down|row\b|dip\b|hamstring|calf/i;
+  function latest(log) {
+    let found = null;
+    for(const exercise of log?.exercises || []) for(const set of exercise.sets || []) {
+      if(set.done === true && Number.isFinite(set.doneAt) && (!found || set.doneAt > found.set.doneAt)) found={exercise,set};
+    }
+    return found;
+  }
+  function plan({log,nextExercise,restEnd,restTotal,now,offset=0,battle=false}) {
+    const split=String(log?.split || '').toUpperCase();
+    const last=latest(log);
+    // A restored or manually started timer must not guess its completed-set context.
+    if(!pools[split] || battle || !last || !(restEnd > now) || !Number.isFinite(restTotal))return null;
+    const start=restEnd-restTotal*1000;
+    if(Math.abs(start-last.set.doneAt)>5000)return null;
+    if(excluded.test(last.exercise.name) || excluded.test(nextExercise?.name || ''))return null;
+    const recover=reason=>({kind:'recovery',reason});
+    if(log.restMobilityOff)return recover('Mobility is off for this workout. Let your breathing settle.');
+    if(restTotal<90)return recover('Short break: use this time to recover and prepare for your next set.');
+    if(!nextExercise)return recover('Choose your next exercise first. Keep this break for recovery.');
+    const names=[last.exercise.name,nextExercise.name];
+    if(names.some(n=>demanding.test(n)) || last.set.reps<=5 || nextExercise.sets?.find(s=>!s.done)?.reps<=5)
+      return recover('Demanding lift ahead or just completed. Keep this break for recovery.');
+    if(names.some(n=>!familiar.test(n)))return recover('Unrecognised exercise: keep this break for recovery.');
+    if(names.some(n=>(/leg |hamstring|calf|hip /i.test(n))!==(split==='LEGS')))
+      return recover('Exercise and routine differ: keep this break for recovery.');
+    if(log.mixedWorkout)return recover('Mixed workout: keep this break for recovery.');
+    const count=(log.exercises || []).filter(e=>!excluded.test(e.name)).reduce((n,e)=>n+(e.sets || []).filter(s=>s.done===true).length,0);
+    const pool=pools[split], id=pool[((Math.max(1,count)-1+Math.max(0,offset))%pool.length)];
+    return {kind:'movement',id,...movements[id],shortCue:shortCues[id],pool:[...pool],seconds:20,waitUntil:start+20000,finishBy:restEnd-20000};
+  }
+  function choose(plan,id){
+    if(!plan || plan.kind!=='movement' || !movements[id])return plan;
+    return {...plan,id,...movements[id],shortCue:shortCues[id],kind:plan.pool.includes(id)?'movement':'deferred'};
+  }
+  function phase(plan,now,startedAt=null,dismissed=false) {
+    if(!plan)return 'hidden';
+    if(plan.kind==='recovery' || dismissed)return 'recovery';
+    if(plan.kind==='deferred')return 'deferred';
+    if(now>=plan.finishBy)return 'prepare';
+    if(startedAt!==null && now>=startedAt+plan.seconds*1000)return 'done';
+    if(startedAt!==null)return 'moving';
+    if(now<plan.waitUntil)return 'settle';
+    if(now+plan.seconds*1000>plan.finishBy)return 'prepare';
+    return 'ready';
+  }
+  return {movements,shortCues,pools,plan,choose,phase,latest};
+})();
+if(typeof module!=='undefined' && module.exports)module.exports=RestMobility;
+
+// Original AI-created static pose guides, hosted with the app.
+var MobilityArt=(()=>{
+  const library=typeof MobilityLibrary!=='undefined'?MobilityLibrary:require('./mobility-library.js');
+  const assets=Object.fromEntries(Object.keys(library).map(id=>[id,'assets/mobility-library-v2/'+id+'.jpg']));
+  const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function render(id){
+    if(!assets[id])return '';
+    return '<img class="ma-guide" src="'+assets[id]+'" alt="'+escape(library[id].alt)+'" width="960" height="720" decoding="async">';
+  }
+  return {render,assets};
+})();
+if(typeof module!=='undefined' && module.exports)module.exports=MobilityArt;
+
   // workoutstreak.tsx
   var import_jsx_runtime = __toESM(require_jsx_runtime());
   if (typeof window !== "undefined" && !window.storage) {
@@ -32752,6 +32979,64 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
       return this.props.children;
     }
   };
+  function RestSummary({restEnd,restTotal,now,nextValue,nextName}) {
+    const left=Math.max(0,Math.ceil((restEnd-now)/1000));
+    const progress=Math.max(0,Math.min(100,left/Math.max(1,restTotal)*100));
+    const e=import_jsx_runtime.jsx,j=import_jsx_runtime.jsxs;
+    return j('section',{className:'ws-rest-summary','aria-label':'Rest timer and next set',children:[
+      j('div',{className:'ws-rest-columns',children:[
+        j('div',{className:'ws-rest-info',children:[e('span',{className:'ws-rest-label',children:'REST REMAINING'}),e('strong',{role:'timer','aria-label':'Rest remaining',children:Math.floor(left/60)+':'+String(left%60).padStart(2,'0')})]}),
+        j('div',{className:'ws-next-info',children:[e('span',{className:'ws-rest-label',children:'NEXT SET'}),e('strong',{children:nextValue||'Choose below'}),nextName&&e('span',{className:'ws-next-name',children:nextName})]})
+      ]}),
+      e('div',{className:'ws-rest-track','aria-hidden':true,children:e('div',{style:{width:progress+'%'}})})
+    ]});
+  }
+  function MobilityRest({plan,now,onDisable}) {
+    const ids=Object.keys(RestMobility.movements);
+    const [selectedId,setSelectedId]=import_react41.useState(plan?.id||ids[0]);
+    const [startedAt,setStartedAt]=import_react41.useState(null);
+    const [dismissed,setDismissed]=import_react41.useState(false);
+    const swipeStart=import_react41.useRef(null);
+    import_react41.useEffect(()=>{if(plan?.id)setSelectedId(plan.id);},[plan?.id]);
+    import_react41.useEffect(()=>{
+      if(!plan||plan.kind!=='movement')return;
+      const i=ids.indexOf(selectedId);
+      for(const id of [selectedId,ids[(i+1)%ids.length],ids[(i+ids.length-1)%ids.length]]){
+        const asset=new Image();asset.src=MobilityArt.assets[id];
+      }
+    },[selectedId,plan?.kind]);
+    if(!plan)return null;
+    const selected=RestMobility.choose(plan,selectedId);
+    const phase=RestMobility.phase(selected,now,startedAt,dismissed);
+    const active=['settle','ready','moving','done','deferred'].includes(phase);
+    const left=startedAt===null?20:Math.max(0,Math.ceil((startedAt+20000-now)/1000));
+    const title=active?selected.title:phase==='prepare'?'Prepare for your next set':'Recovery first';
+    const status=phase==='deferred'?'Save this one for after your workout.':phase==='settle'?'Let your breathing settle first.':phase==='moving'?(selected.bilateral?'Move gently. Rest keeps running.':left>10?'First side. Move gently.':'Switch sides gently.'):phase==='done'?'Finished. Keep resting.':phase==='prepare'?'Rest and get set up.':active?'Pain-free only. No forcing.':plan.reason||'Take this break to recover.';
+    const e=import_jsx_runtime.jsx,j=import_jsx_runtime.jsxs;
+    const browse=delta=>{if(phase!=='moving')setSelectedId(ids[(ids.indexOf(selectedId)+delta+ids.length)%ids.length]);};
+    return j('section',{className:'ws-mobility','aria-label':'Optional rest mobility',children:[
+      j('div',{className:'ws-mobility-top',children:[e('span',{className:'ws-mobility-label',children:active?'OPTIONAL MOBILITY':'RECOVERY'}),active&&e('span',{className:'ws-mobility-position',children:String(ids.indexOf(selectedId)+1).padStart(2,'0')+' / '+ids.length})]}),
+      e('h3',{'aria-live':'polite',children:title}),
+      active&&j('div',{className:'ws-mobility-image',onPointerDown:event=>{swipeStart.current={x:event.clientX,y:event.clientY};},onPointerCancel:()=>{swipeStart.current=null;},onPointerUp:event=>{const start=swipeStart.current;swipeStart.current=null;if(start&&Math.abs(event.clientX-start.x)>45&&Math.abs(event.clientX-start.x)>Math.abs(event.clientY-start.y)*1.5)browse(event.clientX<start.x?1:-1);},children:[
+        e('div',{dangerouslySetInnerHTML:{__html:MobilityArt.render(selectedId)}},selectedId),
+        e('span',{className:'ws-mobility-dose',children:phase==='moving'?(selected.bilateral?'Gentle movement':left>10?'First side':'Switch sides'):selected.dose})
+      ]}),
+      active&&e('p',{className:'ws-mobility-cue',children:selected.shortCue}),
+      active&&e('div',{className:'ws-mobility-track','aria-hidden':true,children:e('div',{style:{width:(phase==='done'?100:phase==='moving'?(20-left)*5:0)+'%'}})}),
+      active&&j('div',{className:'ws-mobility-actions',children:[
+        e('button',{disabled:phase!=='ready',onClick:()=>setStartedAt(now),children:phase==='settle'?'Recover first':phase==='moving'?left+'s remaining':phase==='done'?'Done ✓':phase==='deferred'?'After workout':'Start 20s'}),
+        e('button',{onClick:()=>setDismissed(true),children:phase==='moving'?'Stop & rest':'Just rest'})
+      ]}),
+      e('p',{'aria-live':'polite',className:'ws-mobility-status',children:status}),
+      active&&j('nav',{className:'ws-mobility-nav','aria-label':'Browse stretches',children:[
+        e('button',{disabled:phase==='moving','aria-label':'Previous stretch',onClick:()=>browse(-1),children:'←'}),
+        e('span',{children:selected.area}),
+        e('button',{disabled:phase==='moving','aria-label':'Next stretch',onClick:()=>browse(1),children:'→'})
+      ]}),
+      active&&j('details',{className:'ws-mobility-how',children:[e('summary',{children:'Form & source'}),e('p',{children:selected.detail+' Keep it easy; save deeper holds for after lifting. Stop for pain, tingling or dizziness. Use stable support and a clear space. AI-created pose guide; do not force the pictured range.'}),e('a',{href:selected.url,target:'_blank',rel:'noopener noreferrer',children:selected.source+' ↗'}),onDisable&&e('button',{className:'ws-mobility-off',onClick:onDisable,children:'Turn off for this workout'})]}),
+      !active&&onDisable&&e('button',{className:'ws-mobility-off',onClick:onDisable,children:'Turn off for this workout'})
+    ]});
+  }
   function WorkoutSession({
     log: log2,
     now,
@@ -32769,7 +33054,10 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
     onAdd,
     lastFor,
     recentNames,
-    progFor
+    progFor,
+    mobilityOffset=0,
+    mobilityBattle=false,
+    onMobilityOff
   }) {
     const exs = log2.exercises || [];
     const openExs = exs.map((e, i) => ({ e, i, left: e.skipped ? 0 : e.sets.filter((s2) => !s2.done).length })).filter((x2) => x2.left > 0);
@@ -32788,11 +33076,12 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
     const [edKind,setEdKind]=(0,import_react41.useState)('rename');
     const [edFuture,setEdFuture]=(0,import_react41.useState)(true);
     const resting = !!(restEnd && now < restEnd);
-    const ringPct = resting ? Math.max(0, Math.min(1, (restEnd - now) / 1e3 / Math.max(1, restTotal))) : 0;
     const armed = !resting && !!readyAt;
     const curEx = exs[curExI] && !exs[curExI].skipped ? exs[curExI] : null;
     const si = curEx ? curEx.sets.findIndex((s2) => !s2.done) : -1;
     const cur = si >= 0 && curEx ? curEx.sets[si] : null;
+    const nextMobilityEx=pendingChoose ? (selNext!=null?exs[selNext]:null) : cur?curEx:null;
+    const mobilityPlan=RestMobility.plan({log:log2,nextExercise:nextMobilityEx,restEnd,restTotal,now,offset:mobilityOffset,battle:mobilityBattle});
     const editKey = `${curExI}:${si}`;
     const prog = curEx && progFor ? progFor(curEx.name) : null;
     const baseKg = cur ? cur.kg : 0; // Suggestions never silently change the load.
@@ -32862,7 +33151,6 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
       setSsFlash(false);
     };
     const dots = curEx ? curEx.sets.map((s2, k2) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `ws-dot ${s2.done ? "on" : ""}` }, k2)) : null;
-    const CIRC = 2 * Math.PI * 54;
     if (editor) {
       const isRename = editor.mode === "rename";
       const isWorkout=editor.mode==='workout';
@@ -32960,7 +33248,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
           }, children: "\uFF0B ONE MORE EXERCISE" })
         ] })
       ] }),
-      scene === "work" && !allDone && curEx && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-screen", children: [
+      scene === "work" && !allDone && curEx && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `ws-screen ${resting?'ws-resting':''} ${resting && mobilityPlan ? 'ws-with-mobility' : ''}`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-head", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-eyebrow", children: [
             splitName,
@@ -32987,23 +33275,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
           lastFor && (()=>{const last=lastFor(curEx);const prior=last?.sets[si];return prior?import_jsx_runtime.jsx('div',{className:'ws-last-set',children:`Last completed: ${wShow(prior.kg,unit2)} ${uLbl(unit2)} × ${prior.reps} · ${niceDate(last.date)}`}):null;})()
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-main", children: resting && pendingChoose ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-ringwrap sm", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 120 120", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { className: "ws-rbg", cx: "60", cy: "60", r: "54" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "circle",
-                {
-                  className: "ws-rfg",
-                  cx: "60",
-                  cy: "60",
-                  r: "54",
-                  strokeDasharray: CIRC,
-                  strokeDashoffset: CIRC * (1 - ringPct)
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-rin", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-restword", children: "REST" }) })
-          ] }),
+          import_jsx_runtime.jsx(RestSummary,{restEnd,restTotal,now,nextName:'Choose your next exercise'}),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-chtitle", children: "MACHINE BOOKED? PICK WHAT'S NEXT" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-list", children: [
             pickable.map((x2) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
@@ -33040,32 +33312,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
             )
           ] })
         ] }) : resting && cur ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-resteyebrow", children: "R E S T" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-ringwrap", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 120 120", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { className: "ws-rbg", cx: "60", cy: "60", r: "54" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "circle",
-                {
-                  className: "ws-rfg",
-                  cx: "60",
-                  cy: "60",
-                  r: "54",
-                  strokeDasharray: CIRC,
-                  strokeDashoffset: CIRC * (1 - ringPct)
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-rin", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "NEXT" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: wShow(cur.kg, unit2) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                uLbl(unit2),
-                " \xD7 ",
-                cur.reps
-              ] })
-            ] })
-          ] })
+          import_jsx_runtime.jsx(RestSummary,{restEnd,restTotal,now,nextValue:wShow(cur.kg,unit2)+' '+uLbl(unit2)+' × '+cur.reps,nextName:curEx.name})
         ] }) : cur ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-stepblock", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "ws-stepval", children: [
@@ -33106,6 +33353,9 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "ws-prog-msg", children: prog.msg })
           ] })
         ] }) : null }),
+        resting && mobilityPlan && import_jsx_runtime.jsxs(import_jsx_runtime.Fragment,{children:[
+          import_jsx_runtime.jsx(MobilityRest,{plan:mobilityPlan,now,onDisable:log2.restMobilityOff?null:onMobilityOff},String(restEnd))
+        ]}),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "ws-foot", children: resting && pendingChoose ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
@@ -36055,7 +36305,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
         const day = next.logs[selDay];
         if (!day || !day.exercises[i]) return prev;
         const exercises = day.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
-        exercises[i].sets[j] = { ...exercises[i].sets[j], done: true };
+        exercises[i].sets[j] = { ...exercises[i].sets[j], done: true, doneAt: Date.now() };
         if (exercises[i].skipped) exercises[i] = { ...exercises[i], skipped: false };
         const doneSet = exercises[i].sets[j];
         const nm = stripLift(exercises[i].name);
@@ -39261,6 +39511,9 @@ if(typeof module!=='undefined'&&module.exports)module.exports=WorkoutStorage;
               onAdd: wsAdd,
               recentNames,
               progFor: (name) => computeProg(name, selLog.split || suggested, selDay),
+              mobilityOffset: WorkoutCore.allSessions(data.logs).filter(s=>s.sessionId!==selLog.sessionId && s.split===selLog.split && s.status==='completed').length,
+              mobilityBattle: !!fight || !!bbOutro,
+              onMobilityOff: ()=>setData(prev=>{const next=clone(prev);next.logs[selDay].restMobilityOff=true;persist(next);return next;}),
               onSkipRest: () => {
                 setRestEnd(null);
                 setReadyAt(Date.now());
@@ -40601,6 +40854,44 @@ h2{font-family:'Anton'; font-size:14px; letter-spacing:.1em; text-transform:uppe
 .ws-dot{width:10px; height:10px; border-radius:50%; background:#2a2018; border:1px solid #3a2a1c;}
 .ws-dot.on{background:var(--ember); border-color:var(--ember); box-shadow:0 0 8px rgba(255,138,60,.5);}
 .ws-main{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%;}
+.ws-screen.ws-resting{overflow-y:auto;justify-content:flex-start;gap:12px;}
+.ws-resting .ws-main{flex:0 0 auto;}
+.ws-rest-summary{box-sizing:border-box;width:100%;max-width:360px;padding:6px 0 14px;text-align:left;}
+.ws-rest-columns{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:16px;align-items:start;}
+.ws-rest-info,.ws-next-info{display:flex;flex-direction:column;min-width:0;}
+.ws-rest-label{font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:700;}
+.ws-rest-info strong{font:42px/1.2 'Anton',sans-serif;color:var(--ember);font-variant-numeric:tabular-nums;margin-top:6px;}
+.ws-next-info strong{font:25px/1.3 'Anton',sans-serif;color:var(--gold);margin-top:6px;overflow-wrap:anywhere;}
+.ws-next-name{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;overflow-wrap:anywhere;}
+.ws-rest-track{height:3px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:12px;}
+.ws-rest-track>div{height:100%;background:var(--ember);}
+.ws-mobility{box-sizing:border-box;flex-shrink:0;width:100%;max-width:360px;padding:15px 15px 0;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;}
+.ws-mobility-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ws-mobility-label{font-size:11px;letter-spacing:.07em;color:var(--gold);font-weight:700;}
+.ws-mobility-position{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.ws-mobility h3{font-size:19px;margin:10px 0 12px;line-height:1.3;}
+.ws-mobility-image{position:relative;border-radius:10px;overflow:hidden;background:#171a20;touch-action:pan-y;}
+.ws-mobility .ma-guide{display:block;width:100%;height:auto;max-height:205px;aspect-ratio:4/3;object-fit:contain;background:#171a20;}
+.ws-mobility-dose{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--gold);background:#13161bee;border-radius:6px;padding:5px 8px;white-space:nowrap;max-width:95%;}
+.ws-mobility .ws-mobility-cue{font-size:12px;line-height:1.5;min-height:36px;margin:12px 0 8px;}
+.ws-mobility-track{height:3px;background:var(--line);border-radius:3px;overflow:hidden;}
+.ws-mobility-track>div{height:100%;background:var(--gold);}
+.ws-mobility-actions{display:flex;gap:8px;margin-top:12px;}
+.ws-mobility-actions button{flex:1;min-width:0;min-height:44px;padding:10px 8px;border:1px solid var(--line);border-radius:10px;background:var(--floor);color:var(--chalk);font:600 13px 'Archivo',sans-serif;}
+.ws-mobility-actions button:first-child:not(:disabled){background:var(--gold);border-color:var(--gold);color:#191814;}
+.ws-mobility-actions button:disabled,.ws-mobility-nav button:disabled{opacity:.55;cursor:default;}
+.ws-mobility .ws-mobility-status{font-size:11px;line-height:1.5;color:var(--muted);margin:10px 0 12px;text-align:center;min-height:17px;}
+.ws-mobility-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);}
+.ws-mobility-nav button{border:0;background:none;color:var(--gold);font-size:20px;width:44px;min-height:44px;cursor:pointer;}
+.ws-mobility-nav span{font-size:11px;color:var(--muted);letter-spacing:.04em;text-align:center;}
+.ws-mobility-how{font-size:12px;color:var(--muted);border-top:1px solid var(--line);}
+.ws-mobility-how summary{cursor:pointer;min-height:38px;align-content:center;padding:10px 0;}
+.ws-mobility-how p{font-size:12px;line-height:1.6;margin:0 0 12px;}
+.ws-mobility-how a{color:var(--gold);display:inline-block;min-height:32px;margin-bottom:8px;}
+.ws-mobility-off{background:none;border:0;color:var(--muted);font-size:12px;min-height:44px;padding:10px 0;display:block;}
+.ws-mobility button:focus-visible,.ws-mobility summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+@media(prefers-reduced-motion:no-preference){.ws-mobility-image>.ma-guide,.ws-mobility-image>div{animation:wsMobilityIn .18s ease-out;}.ws-rest-track>div,.ws-mobility-track>div{transition:width .2s linear;}}
+@keyframes wsMobilityIn{from{opacity:.5;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 .ws-foot{width:100%; max-width:340px; display:flex; flex-direction:column; align-items:center;
   gap:10px; padding-bottom:6px;}
 .ws-cta{border:none; border-radius:14px; padding:16px 22px; font-weight:800; font-size:16px;

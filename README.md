@@ -2,9 +2,9 @@
 
 Personal, local-first workout tracker. The static deployment entry point is `streak.html`.
 
-## Reliability preview
+## Reliability improvements
 
-The working branch is `codex/workout-reliability`. These changes are **not deployed**.
+The deployment entry point remains `streak.html`; GitHub Pages builds from `main`.
 
 - In-session workout/exercise renames optionally update future routines (enabled by default).
 - Rename and replace are separate: replacement never relabels already completed work.
@@ -31,7 +31,17 @@ Edit `src/app.js`, `src/workout-core.js` and `src/storage.js`, then run `npm run
 
 ## Tests and preview data
 
-`npm test` runs 27 regression checks covering core workout rules, the real app's statistics functions, migrations, recovery, quota errors and competing writers. The build also syntax-checks the complete browser script.
+`npm test` runs regression checks covering core workout rules, statistics, migrations, recovery, competing writers and optional rest mobility. The build syntax-checks the complete browser script.
+
+## Optional rest mobility
+
+Fifteen illustrated guides cover hips, thighs, calves, upper back, shoulders, wrists and neck. Push/Pull recommend the lower-body pool; Legs recommends the upper-body pool. All fifteen can be browsed with arrows or a swipe; stretches outside the current pool are marked for after the workout and cannot start during that rest. Selection is deterministic: completed strength-set count plus the number of earlier completed sessions of the same actual split, modulo the pool size. It is not random or AI-generated. Skipped/ineligible breaks can advance past an item because the sequence follows completed sets, not confirmed mobility completion.
+
+Only ordinary PPL sessions qualify. Cardio/abs and boss flows are excluded. Rest periods under 90 seconds, named demanding lifts, sets of five reps or fewer, unknown exercises and mixed routines use recovery-only guidance. The first 20 seconds are reserved for settling, movement is optional for 20 seconds, and the final 20 seconds are reserved for preparation. These are conservative product defaults, not clinically established thresholds. No loading, progression, rest duration, XP or statistics are changed by doing or skipping mobility. The workout-level off switch is saved. Browsing preserves the rest deadline and cannot restart a completed mobility interval. The mobility interval itself is transient and resets after a page reload; the rest deadline is recovered independently.
+
+Guides use locally hosted, AI-generated static human illustrations in the app's charcoal-and-gold style. They are pose references, not clinically validated motion demonstrations or a prescribed range to copy. Assets are in `assets/mobility-library-v2/`; adjacent guides preload without contacting a remote image service. Each card includes form guidance and its source under “Form & source.” This feature supports comfortable mobility habits, not a proven lifespan or injury-prevention benefit; injury-specific advice is outside its scope. Deeper holds belong after lifting. Reduced-motion settings disable the subtle card transition.
+
+The rest screen separates the countdown and next-set load/reps into two clear columns above the carousel, with a thin linear progress bar and no timer ring. `node scripts/build-rest-smoke-preview.mjs` builds `rest-smoke-preview.html` using the actual workout component and synthetic in-memory data; it never mounts the storage-owning controller. The generated preview is not a deployment artifact.
 
 To validate a private export without copying it into this repository:
 
@@ -43,7 +53,7 @@ node scripts/check-private-backup.cjs /absolute/private/path/backup.json
 
 Browser checks performed: restore synthetic export; choose Push instead of Legs; rename workout and exercise; confirm routine changes after reload; show last actual Push set; complete and undo a set; restore rest timer after reload; finish and verify comparison date; start a second same-day session; log zero-weight bodyweight work; replace an exercise during rest; inspect phone layout at 390 × 844. No runtime errors were observed during these checks.
 
-Still required before release: owner preview approval, a final phone-browser smoke test, and an up-to-date phone export if further workouts have been logged. Full automated browser coverage of every pre-existing boss/cardio/health animation is not in this suite. No promise of zero regressions is implied.
+The final 15-guide integration and separate rest/next-set columns have automated regression coverage. A final visual browser pass was unavailable because the host Mac was locked. The owner's physical phone is not remotely tested; refresh there without clearing site data and keep a fresh export after further workouts. Full automated browser coverage of every pre-existing boss/cardio/health animation is not in this suite. No promise of zero regressions is implied.
 
 ## Data safety and rollback
 
